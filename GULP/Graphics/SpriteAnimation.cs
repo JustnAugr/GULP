@@ -9,15 +9,13 @@ namespace GULP.Graphics;
 
 public class SpriteAnimation
 {
+    private readonly float _defaultDuration;
+    private readonly bool _shouldLoop;
     private readonly List<Sprite> _sprites = new();
     private readonly List<float> _spriteDurations = new();
     private float _maxHeight;
 
-    public bool ShouldLoop { get; set; } = true;
-    public float PlaybackProgress { get; set; }
-    public bool IsPlaying { get; private set; } = true;
-
-    public int CurrentFrame
+    private int CurrentFrame
     {
         get
         {
@@ -34,6 +32,17 @@ public class SpriteAnimation
         }
     }
 
+    public float PlaybackProgress { get; set; }
+    public bool IsPlaying { get; private set; } = true;
+
+    public float Duration => _spriteDurations.Sum();
+
+    public SpriteAnimation(float defaultDuration = float.NaN, bool shouldLoop = true)
+    {
+        _defaultDuration = defaultDuration;
+        _shouldLoop = shouldLoop;
+    }
+
     public void Play()
     {
         IsPlaying = true;
@@ -41,7 +50,19 @@ public class SpriteAnimation
 
     public void Stop()
     {
+        PlaybackProgress = 0;
         IsPlaying = false;
+    }
+
+    public void AddFrame(Sprite sprite)
+    {
+        if (float.IsNaN(_defaultDuration))
+            throw new ArgumentException(
+                "Must specify a default SpriteAnimation duration if not passing a duration for this frame!");
+
+        _maxHeight = Math.Max(_maxHeight, sprite.Height);
+        _sprites.Add(sprite);
+        _spriteDurations.Add(_defaultDuration);
     }
 
     public void AddFrame(Sprite sprite, float duration)
@@ -57,12 +78,10 @@ public class SpriteAnimation
         {
             PlaybackProgress += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            var duration = _spriteDurations.Sum();
-            
-            if (PlaybackProgress > duration)
+            if (PlaybackProgress > Duration)
             {
-                if (ShouldLoop)
-                    PlaybackProgress -= duration;
+                if (_shouldLoop)
+                    PlaybackProgress -= Duration;
                 else
                     Stop();
             }
@@ -76,7 +95,7 @@ public class SpriteAnimation
         var currentSprite = _sprites[CurrentFrame];
         if (currentSprite.Height < _maxHeight)
             position = new Vector2(position.X, position.Y + (_maxHeight - currentSprite.Height));
-        
+
         _sprites[CurrentFrame]?.Draw(spriteBatch, position);
     }
 }

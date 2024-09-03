@@ -1,5 +1,4 @@
 ﻿using GULP.Entities;
-using GULP.Graphics;
 using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;

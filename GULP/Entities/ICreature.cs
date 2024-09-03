@@ -11,7 +11,7 @@ public interface ICreature
     Rectangle CollisionBox { get; }
 
     bool Walk(float x, float y, GameTime gameTime);
-    bool Attack(float x, float y);
+    bool Attack(float x, float y, GameTime gameTime);
     bool Die();
     bool ReceiveDamage(float damageValue);
 }
