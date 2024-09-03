@@ -7,7 +7,7 @@ public interface ICreature
 {
     float Health { get; set; }
     CreatureState State { get; }
-    bool IsDealingDamage { get; set; }
+    bool IsDealingDamage { get; }
     Rectangle CollisionBox { get; }
 
     bool Walk(float x, float y, GameTime gameTime);

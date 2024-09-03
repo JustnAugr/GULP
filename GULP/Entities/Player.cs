@@ -1,4 +1,5 @@
-﻿using GULP.Graphics;
+﻿using System;
+using GULP.Graphics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -6,20 +7,32 @@ namespace GULP.Entities;
 
 public class Player : IEntity, ICreature
 {
+    private const float ACCELERATION = 1f;
+    private const float MAX_VELOCITY = 2.0f;
+    private const float INITIAL_VELOCITY = 1f;
+
     //animation frame durations
     private const float ANIM_IDLE_FRAME_DURATION = 1 / 4f;
     private const float ANIM_WALK_FRAME_DURATION = 1 / 15f;
     private const float ANIM_ATTACK_FRAME_DURATION = 1 / 10f;
 
+    private const float DAMAGE_DEALING_FRAME = 1;
+
     //spritesheet and animations
     private readonly Texture2D _spriteSheet;
     private SpriteAnimationColl _animColl;
 
-    public int DrawOrder { get; } = 10; //above the ground at 0
+    private float _velocity;
+
+    public int DrawOrder => 10; //above the ground at 0
     public Vector2 Position { get; set; }
     public float Health { get; set; }
     public CreatureState State { get; private set; }
-    public bool IsDealingDamage { get; set; }
+
+    public bool IsDealingDamage => IsAttacking &&
+                                   Math.Abs(_animColl.GetAnimation(State, PlayerDirection).CurrentFrame -
+                                            DAMAGE_DEALING_FRAME) < 0.01;
+
     public Rectangle CollisionBox { get; }
     public Direction PlayerDirection { get; set; }
 
@@ -35,6 +48,7 @@ public class Player : IEntity, ICreature
         Health = 100;
         State = CreatureState.Idling;
 
+        //initialize our animations and store them in a double keyed collection for easy lookup
         _animColl = new SpriteAnimationColl();
         InitializeIdleAnimations();
         InitializeWalkAnimations();
@@ -140,7 +154,7 @@ public class Player : IEntity, ICreature
         attackLeft.AddFrame(new Sprite(_spriteSheet, 56, 358, 34, 23, SpriteEffects.FlipHorizontally));
         attackLeft.AddFrame(new Sprite(_spriteSheet, 107, 358, 20, 21, SpriteEffects.FlipHorizontally));
         attackLeft.AddFrame(new Sprite(_spriteSheet, 161, 360, 15, 19, SpriteEffects.FlipHorizontally));
-        
+
         var attackUp = new SpriteAnimation(ANIM_ATTACK_FRAME_DURATION, shouldLoop: false);
         attackUp.AddFrame(new Sprite(_spriteSheet, 18, 407, 17, 20));
         attackUp.AddFrame(new Sprite(_spriteSheet, 59, 406, 22, 21));
@@ -173,19 +187,21 @@ public class Player : IEntity, ICreature
         if (IsAttacking)
             return false;
 
-        State = CreatureState.Walking;
+        //if we were just idilng, we need to build up speed. no speed buildup needed for attacks
+        if (State == CreatureState.Idling)
+            _velocity = INITIAL_VELOCITY;
 
-        //if we're moving left or right (non-diag or diag), we should face that way
-        //else just face up or down
+        State = CreatureState.Walking;
         SetDirectionFromInput(x, y);
 
-        //now apply changes to our position
-        float speed = 60; //for now
-        if (x != 0 && y != 0)
-            speed /= 1.5f;
+        //increase our velocity by our acceleration up to our max velocity
+        _velocity += ACCELERATION * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _velocity = Math.Min(_velocity, MAX_VELOCITY);
 
-        float posX = Position.X + speed * x * (float)gameTime.ElapsedGameTime.TotalSeconds;
-        float posY = Position.Y + speed * y * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
+        var diagonalAdj = x != 0 && y != 0 ? 1.5f : 1f;
+        var posX = Position.X + (_velocity / diagonalAdj) * x;
+        var posY = Position.Y + (_velocity / diagonalAdj) * y;
 
         Position = new Vector2(posX, posY);
         return true;
@@ -205,7 +221,7 @@ public class Player : IEntity, ICreature
         SetDirectionFromInput(x, y);
         State = CreatureState.Attacking;
 
-        //we need to make sure to start playing the animation
+        //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
         var animation = _animColl.GetAnimation(State, PlayerDirection);
         animation.Play();
 
@@ -227,7 +243,6 @@ public class Player : IEntity, ICreature
     public void Update(GameTime gameTime)
     {
         var animation = _animColl.GetAnimation(State, PlayerDirection);
-
         animation.Update(gameTime);
     }
 

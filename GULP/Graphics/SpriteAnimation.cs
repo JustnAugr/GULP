@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -15,7 +14,7 @@ public class SpriteAnimation
     private readonly List<float> _spriteDurations = new();
     private float _maxHeight;
 
-    private int CurrentFrame
+    public int CurrentFrame
     {
         get
         {
@@ -34,7 +33,6 @@ public class SpriteAnimation
 
     public float PlaybackProgress { get; set; }
     public bool IsPlaying { get; private set; } = true;
-
     public float Duration => _spriteDurations.Sum();
 
     public SpriteAnimation(float defaultDuration = float.NaN, bool shouldLoop = true)
@@ -74,17 +72,17 @@ public class SpriteAnimation
 
     public void Update(GameTime gameTime)
     {
-        if (IsPlaying)
-        {
-            PlaybackProgress += (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (!IsPlaying)
+            return;
 
-            if (PlaybackProgress > Duration)
-            {
-                if (_shouldLoop)
-                    PlaybackProgress -= Duration;
-                else
-                    Stop();
-            }
+        PlaybackProgress += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+        if (PlaybackProgress > Duration)
+        {
+            if (_shouldLoop)
+                PlaybackProgress -= Duration;
+            else
+                Stop();
         }
     }
 
