@@ -90,10 +90,14 @@ public class SpriteAnimation
     {
         //normalizing the heights because we draw from the top and if I don't we'd have weird effects when a sprites bobs
         //up and down
-        var currentSprite = _sprites[CurrentFrame];
-        if (currentSprite.Height < _maxHeight)
-            position = new Vector2(position.X, position.Y + (_maxHeight - currentSprite.Height));
+        var currentFrame = CurrentFrame;
+        if (currentFrame >= 0 && currentFrame < _sprites.Count)
+        {
+            var currentSprite = _sprites[currentFrame];
+            if (currentSprite.Height < _maxHeight)
+                position = new Vector2(position.X, position.Y + (_maxHeight - currentSprite.Height));
+        }
 
-        _sprites[CurrentFrame]?.Draw(spriteBatch, position);
+        _sprites[currentFrame]?.Draw(spriteBatch, position);
     }
 }

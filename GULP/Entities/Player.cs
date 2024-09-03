@@ -7,9 +7,9 @@ namespace GULP.Entities;
 
 public class Player : IEntity, ICreature
 {
-    private const float ACCELERATION = 1f;
+    private const float ACCELERATION = 1.0f;
     private const float MAX_VELOCITY = 2.0f;
-    private const float INITIAL_VELOCITY = 1f;
+    private const float INITIAL_VELOCITY = 1.0f;
 
     //animation frame durations
     private const float ANIM_IDLE_FRAME_DURATION = 1 / 4f;
@@ -139,7 +139,7 @@ public class Player : IEntity, ICreature
     {
         var attackDown = new SpriteAnimation(ANIM_ATTACK_FRAME_DURATION, shouldLoop: false);
         attackDown.AddFrame(new Sprite(_spriteSheet, 15, 311, 16, 20));
-        attackDown.AddFrame(new Sprite(_spriteSheet, 65, 311, 20, 26));
+        attackDown.AddFrame(new Sprite(_spriteSheet, 65, 310, 20, 26));
         attackDown.AddFrame(new Sprite(_spriteSheet, 114, 311, 19, 21));
         attackDown.AddFrame(new Sprite(_spriteSheet, 162, 312, 13, 19));
 
