@@ -1,2 +1,2 @@
-﻿using var game = new GULP.Game1();
+﻿using var game = new GULP.GULPGame();
 game.Run();
