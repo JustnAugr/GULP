@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using GULP.Entities;
 
-namespace GULP.Graphics;
+namespace GULP.Graphics.Sprites;
 
 public class SpriteAnimationColl
 {

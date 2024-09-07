@@ -1,7 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace GULP.Graphics;
+namespace GULP.Graphics.Sprites;
 
 public class Sprite
 {

@@ -1,5 +1,5 @@
 ﻿using System;
-using GULP.Graphics;
+using GULP.Graphics.Sprites;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
