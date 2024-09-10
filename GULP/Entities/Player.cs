@@ -203,6 +203,13 @@ public class Player : IEntity, ICreature
         var posX = Position.X + (_velocity / diagonalAdj) * x;
         var posY = Position.Y + (_velocity / diagonalAdj) * y;
 
+        //simple bounding for now to prevent us from going off screen
+        if (posX is < 0 or > GULPGame.WINDOW_WIDTH)
+            posX = Position.X;
+        
+        if (posY is < 0 or > GULPGame.WINDOW_HEIGHT)
+            posY = Position.Y;
+
         Position = new Vector2(posX, posY);
         return true;
     }
