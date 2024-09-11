@@ -31,6 +31,8 @@ public class SpriteAnimation
         }
     }
 
+    public Sprite CurrentSprite => _sprites[CurrentFrame];
+
     public float PlaybackProgress { get; set; }
     public bool IsPlaying { get; private set; } = true;
     public float Duration => _spriteDurations.Sum();

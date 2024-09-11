@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using GULP.Entities;
 using GULP.Graphics.Tiled;
 using GULP.Systems;
@@ -10,9 +11,10 @@ namespace GULP;
 
 public class GULPGame : Game
 {
+    //this is the actual resolution that should be set via a picker in the settings
+    //allowing the player to choose between 720p, 1080p, 1440p, etc
     public const int WINDOW_WIDTH = 1920;
     public const int WINDOW_HEIGHT = 1080;
-    private const float WINDOW_SCALE_FACTOR = 3f;
 
     private const string PLAYER_TEXTURE_ASSET_NAME = "Sprites/player";
     private const string TILED_PREFIX_ASSET_NAME = "Tiled";
@@ -27,6 +29,7 @@ public class GULPGame : Game
 
     private Player _player;
     private Map _map;
+    private Camera _camera;
 
     public GULPGame()
     {
@@ -39,8 +42,13 @@ public class GULPGame : Game
     {
         base.Initialize();
 
+        //TODO this should be moved into some settings menu and allow the player to change
         _graphics.PreferredBackBufferWidth = WINDOW_WIDTH;
         _graphics.PreferredBackBufferHeight = WINDOW_HEIGHT;
+        
+        _graphics.ToggleFullScreen();
+        _graphics.HardwareModeSwitch = false; //this makes it borderless fullscreen
+
         _graphics.ApplyChanges();
     }
 
@@ -48,13 +56,14 @@ public class GULPGame : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        //Player
-        _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
-        _player = new Player(_playerTexture, new Vector2(900 / WINDOW_SCALE_FACTOR, 540 / WINDOW_SCALE_FACTOR));
-
         //Map
         _map = Map.Load(Path.Combine(Content.RootDirectory, TILED_PREFIX_ASSET_NAME, MAP_FILE_ASSET_NAME), Content);
-
+        
+        //Player
+        _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
+        _player = new Player(_playerTexture, new Vector2(900, 540), _map); //TODO should the map be a global?
+        
+        _camera = new Camera(_player, GraphicsDevice, _map);
         _inputController = new InputController(_player);
     }
 
@@ -66,6 +75,7 @@ public class GULPGame : Game
 
         _inputController.ProcessInputs(gameTime);
         _player.Update(gameTime);
+        _camera.Update(gameTime);
 
         base.Update(gameTime);
     }
@@ -74,8 +84,7 @@ public class GULPGame : Game
     {
         GraphicsDevice.Clear(Color.White);
 
-        var transformMatrix = Matrix.Identity * Matrix.CreateScale(WINDOW_SCALE_FACTOR, WINDOW_SCALE_FACTOR, 1);
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: transformMatrix);
+        _spriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: _camera.GetTransformationMatrix());
 
         _map.Draw(_spriteBatch);
         _player.Draw(_spriteBatch);

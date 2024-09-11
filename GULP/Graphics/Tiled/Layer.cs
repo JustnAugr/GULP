@@ -8,8 +8,8 @@ public class Layer
     public readonly int[] LayerData;
     public int Id { get; private set; }
     public string LayerName { get; private set; }
-    public int Width { get; private set; }
-    public int Height { get; private set; }
+    public int Width { get; private set; } //in tiles, should always match Map
+    public int Height { get; private set; } //above
 
     private Layer(int id, string layerName, int width, int height, int[] layerData)
     {

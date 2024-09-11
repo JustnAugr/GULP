@@ -1,5 +1,6 @@
 ﻿using System;
 using GULP.Graphics.Sprites;
+using GULP.Graphics.Tiled;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -8,7 +9,7 @@ namespace GULP.Entities;
 public class Player : IEntity, ICreature
 {
     private const float ACCELERATION = 1.0f;
-    private const float MAX_VELOCITY = 2.0f;
+    private const float MAX_VELOCITY = 5.0f;
     private const float INITIAL_VELOCITY = 1.0f;
 
     //animation frame durations
@@ -20,6 +21,7 @@ public class Player : IEntity, ICreature
 
     //spritesheet and animations
     private readonly Texture2D _spriteSheet;
+    private readonly Map _map;
     private SpriteAnimationColl _animColl;
 
     private float _velocity;
@@ -39,9 +41,10 @@ public class Player : IEntity, ICreature
     public bool IsAttacking => //attacking is going to be a "heavy" action, we can't cancel it
         State == CreatureState.Attacking && _animColl.GetAnimation(State, PlayerDirection).IsPlaying;
 
-    public Player(Texture2D spriteSheet, Vector2 position)
+    public Player(Texture2D spriteSheet, Vector2 position, Map map)
     {
         _spriteSheet = spriteSheet;
+        _map = map; 
 
         //values on initialization
         Position = position;
@@ -204,10 +207,11 @@ public class Player : IEntity, ICreature
         var posY = Position.Y + (_velocity / diagonalAdj) * y;
 
         //simple bounding for now to prevent us from going off screen
-        if (posX is < 0 or > GULPGame.WINDOW_WIDTH)
+        var currentSprite = _animColl.GetAnimation(State, PlayerDirection).CurrentSprite;
+        if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
             posX = Position.X;
         
-        if (posY is < 0 or > GULPGame.WINDOW_HEIGHT)
+        if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
 
         Position = new Vector2(posX, posY);

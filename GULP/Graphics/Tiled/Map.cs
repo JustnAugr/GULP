@@ -14,10 +14,13 @@ public class Map
     public readonly List<Tileset> Tilesets = new();
     public readonly List<Layer> Layers = new();
 
-    public int Width { get; private set; }
-    public int Height { get; private set; }
+    public int Width { get; private set; } //in tiles
+    public int Height { get; private set; } //in tiles
     public int TileWidth { get; private set; }
     public int TileHeight { get; private set; }
+    
+    public int PixelWidth => Width * TileWidth;
+    public int PixelHeight => Height * TileHeight;
 
     public static Map Load(string filename, ContentManager contentManager)
     {
