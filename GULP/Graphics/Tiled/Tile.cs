@@ -10,9 +10,11 @@ public class Tile
     public int Y { get; }
     public int Width { get; }
     public int Height { get; }
+    public int Id { get; }
 
-    public Tile(Texture2D texture, int x, int y, int width, int height)
+    public Tile(Texture2D texture, int x, int y, int width, int height, int id)
     {
+        Id = id;
         Texture = texture;
         X = x;
         Y = y;

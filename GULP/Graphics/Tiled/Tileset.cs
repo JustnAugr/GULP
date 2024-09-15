@@ -68,6 +68,13 @@ public class Tileset
                             result.ImageHeight =
                                 int.Parse(reader.GetAttribute("height") ?? throw new InvalidOperationException());
                             break;
+                        case "tile":
+                            Debug.WriteLine("tile");
+                            var st = reader.ReadSubtree();
+                            st.Read();
+                            //process the objectgroup/object in another method
+                            Debug.WriteLine("tile");
+                            break;
                         //TODO add tile/objectgroup loading for collisions etc on the tileset
                     }
 
@@ -80,15 +87,19 @@ public class Tileset
         }
 
         //load our tileset texture, then create tile objects that we can reference later
-        var imageSourceName = result.ImageSource?.Remove(result.ImageSource.Length - 4); //removing our suffixes in order to use ContentManager
+        var imageSourceName =
+            result.ImageSource?.Remove(result.ImageSource.Length -
+                                       4); //removing our suffixes in order to use ContentManager
         var texture2D = content.Load<Texture2D>("Tiled/" + imageSourceName);
 
-        for (int i = 0; i < result.ImageHeight; i+= result.TileHeight)
+        for (int i = 0; i < result.ImageHeight; i += result.TileHeight)
         {
-            for (int j = 0; j < result.ImageWidth; j+= result.TileWidth)
+            for (int j = 0; j < result.ImageWidth; j += result.TileWidth)
             {
+                //calculate the id of this tile based on the first gid, and how many tiles we've processed before
+                var id = firstgid + j / result.TileWidth + i / result.TileHeight * result.Columns;
                 //j and i represent top left corner of the tile
-                result.Tiles.Add(new Tile(texture2D, j, i, result.TileWidth, result.TileHeight));
+                result.Tiles.Add(new Tile(texture2D, j, i, result.TileWidth, result.TileHeight, id));
             }
         }
 

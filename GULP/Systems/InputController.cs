@@ -24,6 +24,7 @@ public class InputController
         var leftPressed = kbState.IsKeyDown(Keys.Left) || kbState.IsKeyDown(Keys.A);
         var rightPressed = kbState.IsKeyDown(Keys.Right) || kbState.IsKeyDown(Keys.D);
 
+        //create a directional vector based on which WASD keys are pressed
         float x = leftPressed ? -1 : rightPressed ? 1 : 0;
         float y = upPressed ? -1 : downPressed ? 1 : 0;
 

@@ -46,8 +46,8 @@ public class GULPGame : Game
         _graphics.PreferredBackBufferWidth = WINDOW_WIDTH;
         _graphics.PreferredBackBufferHeight = WINDOW_HEIGHT;
         
-        _graphics.ToggleFullScreen();
-        _graphics.HardwareModeSwitch = false; //this makes it borderless fullscreen
+        //_graphics.ToggleFullScreen();
+        //_graphics.HardwareModeSwitch = false; //this makes it borderless fullscreen
 
         _graphics.ApplyChanges();
     }

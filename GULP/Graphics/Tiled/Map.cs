@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml;
@@ -18,7 +19,7 @@ public class Map
     public int Height { get; private set; } //in tiles
     public int TileWidth { get; private set; }
     public int TileHeight { get; private set; }
-    
+
     public int PixelWidth => Width * TileWidth;
     public int PixelHeight => Height * TileHeight;
 
@@ -127,6 +128,7 @@ public class Map
                     var tile = GetTile(tileNumber);
                     tile.Draw(spriteBatch, new Vector2(j, i));
                 }
+
                 //after drawing every layer for this tile, we can draw the next one
                 tileIndex++;
             }
@@ -138,7 +140,24 @@ public class Map
         //return the last tileset whose firstgid is <= our tilenumber
         //ie if our tileNumber is 40 and the first gid of this tileset is 35 but the next tileset's first gid is 50
         //then we want the one with firsgid=35
+        //todo realistically we won't ever, and shouldn't ever, have many tilesets because we want to minimize different textures, but I would like to optimize this - i hate doing the where and maxby separately
         var tileset = Tilesets.Where(ts => ts.Firstgid <= tileNumber).MaxBy(ts => ts.Firstgid);
         return tileset.Tiles[tileNumber - tileset.Firstgid]; //offset it by the firstgid as tileNumber is absolute
+    }
+
+    public Tile GetTile(float x, float y, int layer)
+    {
+        //quick math to convert an x and y coordinate on our map into the index of our tile array
+        var xIndex = (int)Math.Floor(x) / TileWidth;
+        var yIndex = (int)Math.Floor(y) / TileHeight;
+        var cols = Width;
+
+        //the index of this tile in our tileData array
+        var tileIndex = xIndex + yIndex * cols;
+        //the number of that tile in our raw csv
+        var tileNumber = Layers[layer].LayerData[tileIndex];
+
+        //0 meaning it was an empty air tile
+        return tileNumber == 0 ? null : GetTile(tileNumber);
     }
 }

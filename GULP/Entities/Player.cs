@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
 using Microsoft.Xna.Framework;
@@ -36,7 +37,7 @@ public class Player : IEntity, ICreature
                                             DAMAGE_DEALING_FRAME) < 0.01;
 
     public Rectangle CollisionBox { get; }
-    public Direction PlayerDirection { get; set; }
+    public Direction PlayerDirection { get; set; } //TODO should I rename this to something like animation direction?
 
     public bool IsAttacking => //attacking is going to be a "heavy" action, we can't cancel it
         State == CreatureState.Attacking && _animColl.GetAnimation(State, PlayerDirection).IsPlaying;
@@ -44,7 +45,7 @@ public class Player : IEntity, ICreature
     public Player(Texture2D spriteSheet, Vector2 position, Map map)
     {
         _spriteSheet = spriteSheet;
-        _map = map; 
+        _map = map;
 
         //values on initialization
         Position = position;
@@ -170,7 +171,7 @@ public class Player : IEntity, ICreature
         _animColl.AddAnimation(CreatureState.Attacking, Direction.Up, attackUp);
     }
 
-    private void SetDirectionFromInput(float x, float y)
+    private void SetDirectionFromVector(float x, float y)
     {
         //if we're moving left or right (non-diag or diag), we should face that way
         //else just face up or down
@@ -195,7 +196,7 @@ public class Player : IEntity, ICreature
             _velocity = INITIAL_VELOCITY;
 
         State = CreatureState.Walking;
-        SetDirectionFromInput(x, y);
+        SetDirectionFromVector(x, y);
 
         //increase our velocity by our acceleration up to our max velocity
         _velocity += ACCELERATION * (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -203,6 +204,8 @@ public class Player : IEntity, ICreature
 
         //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
         var diagonalAdj = x != 0 && y != 0 ? 1.5f : 1f;
+        
+        //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
         var posX = Position.X + (_velocity / diagonalAdj) * x;
         var posY = Position.Y + (_velocity / diagonalAdj) * y;
 
@@ -210,9 +213,17 @@ public class Player : IEntity, ICreature
         var currentSprite = _animColl.GetAnimation(State, PlayerDirection).CurrentSprite;
         if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
             posX = Position.X;
-        
+
         if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
+
+        //messing around with detecting what's on this layer, will be used for collision detection layer
+        //todo remove this
+        // var topLeft = _map.GetTile(Position.X, Position.Y, 0);
+        // var topRight = _map.GetTile(Position.X + currentSprite.Width, Position.Y, 0);
+        // var botLeft = _map.GetTile(Position.X, Position.Y + currentSprite.Height, 0);
+        // var botRight = _map.GetTile(Position.X + currentSprite.Width, Position.Y + currentSprite.Height, 0);
+        // Debug.WriteLine(topLeft.Id + " " + topRight.Id + " " + botLeft.Id + " " + botRight.Id);
 
         Position = new Vector2(posX, posY);
         return true;
@@ -229,7 +240,7 @@ public class Player : IEntity, ICreature
 
     public bool Attack(float x, float y, GameTime gameTime)
     {
-        SetDirectionFromInput(x, y);
+        SetDirectionFromVector(x, y);
         State = CreatureState.Attacking;
 
         //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
