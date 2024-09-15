@@ -10,9 +10,10 @@ public class SpriteAnimation
 {
     private readonly float _defaultDuration;
     private readonly bool _shouldLoop;
-    private readonly List<Sprite> _sprites = new();
     private readonly List<float> _spriteDurations = new();
     private float _maxHeight;
+
+    public readonly List<Sprite> Sprites = new();
 
     public int CurrentFrame
     {
@@ -31,8 +32,7 @@ public class SpriteAnimation
         }
     }
 
-    public Sprite CurrentSprite => _sprites[CurrentFrame];
-
+    public Sprite CurrentSprite => Sprites[CurrentFrame];
     public float PlaybackProgress { get; set; }
     public bool IsPlaying { get; private set; } = true;
     public float Duration => _spriteDurations.Sum();
@@ -61,14 +61,14 @@ public class SpriteAnimation
                 "Must specify a default SpriteAnimation duration if not passing a duration for this frame!");
 
         _maxHeight = Math.Max(_maxHeight, sprite.Height);
-        _sprites.Add(sprite);
+        Sprites.Add(sprite);
         _spriteDurations.Add(_defaultDuration);
     }
 
     public void AddFrame(Sprite sprite, float duration)
     {
         _maxHeight = Math.Max(_maxHeight, sprite.Height);
-        _sprites.Add(sprite);
+        Sprites.Add(sprite);
         _spriteDurations.Add(duration);
     }
 
@@ -93,13 +93,13 @@ public class SpriteAnimation
         //normalizing the heights because we draw from the top and if I don't we'd have weird effects when a sprites bobs
         //up and down
         var currentFrame = CurrentFrame;
-        if (currentFrame >= 0 && currentFrame < _sprites.Count)
+        if (currentFrame >= 0 && currentFrame < Sprites.Count)
         {
-            var currentSprite = _sprites[currentFrame];
+            var currentSprite = Sprites[currentFrame];
             if (currentSprite.Height < _maxHeight)
                 position = new Vector2(position.X, position.Y + (_maxHeight - currentSprite.Height));
         }
 
-        _sprites[currentFrame]?.Draw(spriteBatch, position);
+        Sprites[currentFrame]?.Draw(spriteBatch, position);
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace GULP.Entities;
 
-public enum Direction
+public enum SpriteDirection
 {
     Down,
     Up,

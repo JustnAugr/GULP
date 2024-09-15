@@ -6,11 +6,11 @@ namespace GULP.Graphics.Sprites;
 
 public class SpriteAnimationColl
 {
-    private Dictionary<CreatureState, Dictionary<Direction, SpriteAnimation>> _spriteAnimations = new();
+    private Dictionary<CreatureState, Dictionary<SpriteDirection, SpriteAnimation>> _spriteAnimations = new();
 
-    public void AddAnimation(CreatureState state, Direction direction, SpriteAnimation animation)
+    public void AddAnimation(CreatureState state, SpriteDirection direction, SpriteAnimation animation)
     {
-        var directionDict = _spriteAnimations.GetValueOrDefault(state, new Dictionary<Direction, SpriteAnimation>());
+        var directionDict = _spriteAnimations.GetValueOrDefault(state, new Dictionary<SpriteDirection, SpriteAnimation>());
 
         if (directionDict.ContainsKey(direction))
             throw new ArgumentException(
@@ -22,7 +22,7 @@ public class SpriteAnimationColl
             _spriteAnimations.Add(state, directionDict);
     }
 
-    public SpriteAnimation GetAnimation(CreatureState state, Direction direction)
+    public SpriteAnimation GetAnimation(CreatureState state, SpriteDirection direction)
     {
         if (!_spriteAnimations.ContainsKey(state))
             return null;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
 using Microsoft.Xna.Framework;
@@ -29,18 +30,48 @@ public class Player : IEntity, ICreature
 
     public int DrawOrder => 10; //above the ground at 0
     public Vector2 Position { get; set; }
+    public Vector2 Direction { get; set; }
     public float Health { get; set; }
     public CreatureState State { get; private set; }
 
     public bool IsDealingDamage => IsAttacking &&
-                                   Math.Abs(_animColl.GetAnimation(State, PlayerDirection).CurrentFrame -
+                                   Math.Abs(_animColl.GetAnimation(State, AnimDirection).CurrentFrame -
                                             DAMAGE_DEALING_FRAME) < 0.01;
 
-    public Rectangle CollisionBox { get; }
-    public Direction PlayerDirection { get; set; } //TODO should I rename this to something like animation direction?
+    public Rectangle CollisionBox
+    {
+        get
+        {
+            //TODO jesus christ this needs cleaning, some constants
+            
+            //get our max height and width sprites for the current animation
+            var maxHSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Height);
+            var maxWSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Width);
+
+            //we use constant size for our collisionbox rather than a variable sprite inset
+            var width = 8;
+            var height = 9;
+            //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
+            //towards the feet on the y-axis
+            var rect = new Rectangle((int)Math.Floor(Position.X) + maxWSprite.Width / 2 - width / 2,
+                (int)Math.Floor(Position.Y) + (maxHSprite.Height / 2) - (int)(height / 2.5), width, height);
+            
+            //there can be cases where jamming yourself into a box on the X axis and then trying to move on the Y
+            //will cause the player to get stuck bc the collisionbox shifts as the animation does from left/right to up/down
+            //handle that by deflating by a pixel to allow us to get out of it
+            if (Direction.X == 0 && Direction.Y != 0 && State is CreatureState.Walking)
+            {
+                rect.Inflate(-1, 0);
+            }
+
+            return rect;
+        }
+    }
+
+    public SpriteDirection AnimDirection { get; set; }
 
     public bool IsAttacking => //attacking is going to be a "heavy" action, we can't cancel it
-        State == CreatureState.Attacking && _animColl.GetAnimation(State, PlayerDirection).IsPlaying;
+        State == CreatureState.Attacking && _animColl.GetAnimation(State, AnimDirection).IsPlaying;
 
     public Player(Texture2D spriteSheet, Vector2 position, Map map)
     {
@@ -93,10 +124,10 @@ public class Player : IEntity, ICreature
         idleRight.AddFrame(new Sprite(_spriteSheet, 209, 71, 15, 20));
         idleRight.AddFrame(new Sprite(_spriteSheet, 257, 71, 15, 20));
 
-        _animColl.AddAnimation(CreatureState.Idling, Direction.Down, idleDown);
-        _animColl.AddAnimation(CreatureState.Idling, Direction.Up, idleUp);
-        _animColl.AddAnimation(CreatureState.Idling, Direction.Left, idleLeft);
-        _animColl.AddAnimation(CreatureState.Idling, Direction.Right, idleRight);
+        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Down, idleDown);
+        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Up, idleUp);
+        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Left, idleLeft);
+        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Right, idleRight);
     }
 
     private void InitializeWalkAnimations()
@@ -133,10 +164,10 @@ public class Player : IEntity, ICreature
         walkLeft.AddFrame(new Sprite(_spriteSheet, 209, 213, 15, 22, SpriteEffects.FlipHorizontally));
         walkLeft.AddFrame(new Sprite(_spriteSheet, 257, 214, 15, 21, SpriteEffects.FlipHorizontally));
 
-        _animColl.AddAnimation(CreatureState.Walking, Direction.Down, walkDown);
-        _animColl.AddAnimation(CreatureState.Walking, Direction.Up, walkUp);
-        _animColl.AddAnimation(CreatureState.Walking, Direction.Right, walkRight);
-        _animColl.AddAnimation(CreatureState.Walking, Direction.Left, walkLeft);
+        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Down, walkDown);
+        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Up, walkUp);
+        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Right, walkRight);
+        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Left, walkLeft);
     }
 
     private void InitializeAttackAnimations()
@@ -165,27 +196,30 @@ public class Player : IEntity, ICreature
         attackUp.AddFrame(new Sprite(_spriteSheet, 108, 407, 20, 20));
         attackUp.AddFrame(new Sprite(_spriteSheet, 162, 408, 13, 19));
 
-        _animColl.AddAnimation(CreatureState.Attacking, Direction.Down, attackDown);
-        _animColl.AddAnimation(CreatureState.Attacking, Direction.Right, attackRight);
-        _animColl.AddAnimation(CreatureState.Attacking, Direction.Left, attackLeft);
-        _animColl.AddAnimation(CreatureState.Attacking, Direction.Up, attackUp);
+        _animColl.AddAnimation(CreatureState.Attacking, SpriteDirection.Down, attackDown);
+        _animColl.AddAnimation(CreatureState.Attacking, SpriteDirection.Right, attackRight);
+        _animColl.AddAnimation(CreatureState.Attacking, SpriteDirection.Left, attackLeft);
+        _animColl.AddAnimation(CreatureState.Attacking, SpriteDirection.Up, attackUp);
     }
 
-    private void SetDirectionFromVector(float x, float y)
+    private void SetAnimationDirection(Vector2 direction)
     {
+        var x = direction.X;
+        var y = direction.Y;
+
         //if we're moving left or right (non-diag or diag), we should face that way
         //else just face up or down
         if (x < 0)
-            PlayerDirection = Direction.Left;
+            AnimDirection = SpriteDirection.Left;
         else if (x > 0)
-            PlayerDirection = Direction.Right;
+            AnimDirection = SpriteDirection.Right;
         else if (y < 0)
-            PlayerDirection = Direction.Up;
+            AnimDirection = SpriteDirection.Up;
         else if (y > 0)
-            PlayerDirection = Direction.Down;
+            AnimDirection = SpriteDirection.Down;
     }
 
-    public bool Walk(float x, float y, GameTime gameTime)
+    public bool Walk(Vector2 direction, GameTime gameTime)
     {
         //if we're currently attacking and mid animation, we can't attack-cancel to run
         if (IsAttacking)
@@ -196,36 +230,47 @@ public class Player : IEntity, ICreature
             _velocity = INITIAL_VELOCITY;
 
         State = CreatureState.Walking;
-        SetDirectionFromVector(x, y);
+        SetAnimationDirection(direction);
 
         //increase our velocity by our acceleration up to our max velocity
         _velocity += ACCELERATION * (float)gameTime.ElapsedGameTime.TotalSeconds;
         _velocity = Math.Min(_velocity, MAX_VELOCITY);
 
         //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
-        var diagonalAdj = x != 0 && y != 0 ? 1.5f : 1f;
-        
+        var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
+
         //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
-        var posX = Position.X + (_velocity / diagonalAdj) * x;
-        var posY = Position.Y + (_velocity / diagonalAdj) * y;
+        var posX = Position.X + (_velocity / diagonalAdj) * direction.X;
+        var posY = Position.Y + (_velocity / diagonalAdj) * direction.Y;
 
         //simple bounding for now to prevent us from going off screen
-        var currentSprite = _animColl.GetAnimation(State, PlayerDirection).CurrentSprite;
+        var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
         if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
             posX = Position.X;
 
         if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
 
-        //messing around with detecting what's on this layer, will be used for collision detection layer
-        //todo remove this
-        // var topLeft = _map.GetTile(Position.X, Position.Y, 0);
-        // var topRight = _map.GetTile(Position.X + currentSprite.Width, Position.Y, 0);
-        // var botLeft = _map.GetTile(Position.X, Position.Y + currentSprite.Height, 0);
-        // var botRight = _map.GetTile(Position.X + currentSprite.Width, Position.Y + currentSprite.Height, 0);
-        // Debug.WriteLine(topLeft.Id + " " + topRight.Id + " " + botLeft.Id + " " + botRight.Id);
+        //saving in case actually doing this movement would cause us to colide
+        var oldPosX = Position.X;
+        var oldPosY = Position.Y;
 
+        //if we can walk, what's our new direction and position?
+        Direction = direction;
         Position = new Vector2(posX, posY);
+        
+        var doesCollide = _map.DoesCollide(CollisionBox, direction, 1);
+        if (doesCollide)
+        {
+            Debug.WriteLine("COLLISION!");
+            //reset position if we would collide by apply this position change
+            Position = new Vector2(oldPosX, oldPosY);
+        }
+        else
+        {
+            Debug.WriteLine("no collision!");
+        }
+
         return true;
     }
 
@@ -238,15 +283,16 @@ public class Player : IEntity, ICreature
         State = CreatureState.Idling;
     }
 
-    public bool Attack(float x, float y, GameTime gameTime)
+    public bool Attack(Vector2 direction, GameTime gameTime)
     {
-        SetDirectionFromVector(x, y);
+        SetAnimationDirection(direction);
         State = CreatureState.Attacking;
 
         //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
-        var animation = _animColl.GetAnimation(State, PlayerDirection);
+        var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Play();
 
+        Direction = direction;
         return true;
     }
 
@@ -264,13 +310,33 @@ public class Player : IEntity, ICreature
 
     public void Update(GameTime gameTime)
     {
-        var animation = _animColl.GetAnimation(State, PlayerDirection);
+        var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Update(gameTime);
     }
 
     public void Draw(SpriteBatch spriteBatch)
     {
-        var animation = _animColl.GetAnimation(State, PlayerDirection);
+        //This will get moved into some DebugHelper or something, it allows me to see the player's actual collisionbox
+        //drawn on top of the sprite
+        // if (false)
+        // {
+        //     var rect = CollisionBox;
+        //
+        //     var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
+        //     var boxData = new Color[rect.Width * rect.Height];
+        //
+        //     for (int i = 0; i < boxData.Length; i++)
+        //     {
+        //         boxData[i] = Color.Yellow;
+        //     }
+        //
+        //     boxTexture.SetData(boxData);
+        //     spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
+        //         Color.White, 0f,
+        //         Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
+        // }
+        
+        var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Draw(spriteBatch, Position);
     }
 }

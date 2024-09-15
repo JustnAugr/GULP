@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Xml;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -34,6 +35,8 @@ public class Tileset
         {
             DtdProcessing = DtdProcessing.Parse
         };
+
+        Dictionary<int, Rectangle> objects = new();
 
         //scope of the using definiton is automatically defined as end of the current code block
         using var stream = File.OpenText(Path.Combine(content.RootDirectory, "Tiled", filename));
@@ -69,13 +72,48 @@ public class Tileset
                                 int.Parse(reader.GetAttribute("height") ?? throw new InvalidOperationException());
                             break;
                         case "tile":
-                            Debug.WriteLine("tile");
+                            var tileId = int.Parse(reader.GetAttribute("id") ?? throw new InvalidOperationException());
+
+                            //TODO this should be a separate method...
                             var st = reader.ReadSubtree();
                             st.Read();
-                            //process the objectgroup/object in another method
-                            Debug.WriteLine("tile");
+                            while (st.Read())
+                            {
+                                var stName = st.Name;
+                                switch (st.NodeType)
+                                {
+                                    case XmlNodeType.Element:
+                                        switch (stName)
+                                        {
+                                            case "object":
+                                                var objectType = st.GetAttribute("type");
+                                                //eventually we'll need to handle other object types
+                                                if (objectType == "Collision")
+                                                {
+                                                    var x = int.Parse(reader.GetAttribute("x") ??
+                                                                      throw new InvalidOperationException());
+                                                    var y = int.Parse(reader.GetAttribute("y") ??
+                                                                      throw new InvalidOperationException());
+                                                    var width = int.Parse(reader.GetAttribute("width") ??
+                                                                          throw new InvalidOperationException());
+                                                    var height = int.Parse(reader.GetAttribute("height") ??
+                                                                           throw new InvalidOperationException());
+
+                                                    objects.Add(tileId, new Rectangle(x, y, width, height));
+                                                }
+
+                                                break;
+                                        }
+
+                                        break;
+                                    case XmlNodeType.EndElement:
+                                        break;
+                                    case XmlNodeType.Whitespace:
+                                        break;
+                                }
+                            }
+
                             break;
-                        //TODO add tile/objectgroup loading for collisions etc on the tileset
                     }
 
                     break;
@@ -97,9 +135,14 @@ public class Tileset
             for (int j = 0; j < result.ImageWidth; j += result.TileWidth)
             {
                 //calculate the id of this tile based on the first gid, and how many tiles we've processed before
-                var id = firstgid + j / result.TileWidth + i / result.TileHeight * result.Columns;
+                //local index in just this tileset
+                var localId = j / result.TileWidth + i / result.TileHeight * result.Columns;
+                //global id amongst all the tilesets is how tiled handles it...
+                var globalId = firstgid + localId;
+
+                objects.TryGetValue(localId, out var rect);
                 //j and i represent top left corner of the tile
-                result.Tiles.Add(new Tile(texture2D, j, i, result.TileWidth, result.TileHeight, id));
+                result.Tiles.Add(new Tile(texture2D, j, i, result.TileWidth, result.TileHeight, globalId, rect));
             }
         }
 

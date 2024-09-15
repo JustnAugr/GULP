@@ -28,13 +28,15 @@ public class InputController
         float x = leftPressed ? -1 : rightPressed ? 1 : 0;
         float y = upPressed ? -1 : downPressed ? 1 : 0;
 
+        Vector2 direction = new(x, y);
+
         if (kbState.IsKeyDown(Keys.Space) && !_previousKeyboardState.IsKeyDown(Keys.Space))
         {
-            _player.Attack(x, y, gameTime);
+            _player.Attack(direction, gameTime);
         }
         else if (downPressed || upPressed || leftPressed || rightPressed)
         {
-            _player.Walk(x, y, gameTime);
+            _player.Walk(direction, gameTime);
         }
         else
         {

@@ -45,7 +45,7 @@ public class GULPGame : Game
         //TODO this should be moved into some settings menu and allow the player to change
         _graphics.PreferredBackBufferWidth = WINDOW_WIDTH;
         _graphics.PreferredBackBufferHeight = WINDOW_HEIGHT;
-        
+
         //_graphics.ToggleFullScreen();
         //_graphics.HardwareModeSwitch = false; //this makes it borderless fullscreen
 
@@ -58,11 +58,11 @@ public class GULPGame : Game
 
         //Map
         _map = Map.Load(Path.Combine(Content.RootDirectory, TILED_PREFIX_ASSET_NAME, MAP_FILE_ASSET_NAME), Content);
-        
+
         //Player
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
         _player = new Player(_playerTexture, new Vector2(900, 540), _map); //TODO should the map be a global?
-        
+
         _camera = new Camera(_player, GraphicsDevice, _map);
         _inputController = new InputController(_player);
     }
@@ -84,7 +84,8 @@ public class GULPGame : Game
     {
         GraphicsDevice.Clear(Color.White);
 
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: _camera.GetTransformationMatrix());
+        _spriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: _camera.GetTransformationMatrix(),
+            sortMode: SpriteSortMode.FrontToBack);
 
         _map.Draw(_spriteBatch);
         _player.Draw(_spriteBatch);

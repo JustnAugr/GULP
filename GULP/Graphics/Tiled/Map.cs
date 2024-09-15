@@ -117,16 +117,16 @@ public class Map
             for (var j = 0; j < width; j += TileWidth)
             {
                 //this should already be sorted
-                foreach (var layer in Layers)
+                for (int k = 0; k < Layers.Count; k++)
                 {
-                    var tileNumber = layer.LayerData[tileIndex];
+                    var tileNumber = Layers[k].LayerData[tileIndex];
 
                     //transparent, doesn't need to actually be drawn
                     if (tileNumber == 0)
                         continue;
 
                     var tile = GetTile(tileNumber);
-                    tile.Draw(spriteBatch, new Vector2(j, i));
+                    tile.Draw(spriteBatch, new Vector2(j, i), k);
                 }
 
                 //after drawing every layer for this tile, we can draw the next one
@@ -145,11 +145,11 @@ public class Map
         return tileset.Tiles[tileNumber - tileset.Firstgid]; //offset it by the firstgid as tileNumber is absolute
     }
 
-    public Tile GetTile(float x, float y, int layer)
+    public Tile GetTile(Vector2 position, int layer)
     {
         //quick math to convert an x and y coordinate on our map into the index of our tile array
-        var xIndex = (int)Math.Floor(x) / TileWidth;
-        var yIndex = (int)Math.Floor(y) / TileHeight;
+        var xIndex = (int)Math.Floor(position.X) / TileWidth;
+        var yIndex = (int)Math.Floor(position.Y) / TileHeight;
         var cols = Width;
 
         //the index of this tile in our tileData array
@@ -159,5 +159,61 @@ public class Map
 
         //0 meaning it was an empty air tile
         return tileNumber == 0 ? null : GetTile(tileNumber);
+    }
+
+    public bool DoesCollide(Rectangle rectangle, Vector2 direction, int layer)
+    {
+        //TODO diagonal should only check diagonal? or we should allow to slide if one aspect the diagonal is OK
+
+        //for the four corners of our entity's rectangle, pick which corners to actually check based on direction vector
+        var points = new HashSet<Vector2>();
+        if (direction.X > 0)
+        {
+            points.Add(new Vector2(rectangle.Right, rectangle.Y));
+            points.Add(new Vector2(rectangle.Right, rectangle.Bottom));
+        }
+
+        if (direction.X < 0)
+        {
+            points.Add(new Vector2(rectangle.X, rectangle.Y));
+            points.Add(new Vector2(rectangle.X, rectangle.Bottom));
+        }
+
+        if (direction.Y < 0)
+        {
+            points.Add(new Vector2(rectangle.X, rectangle.Y));
+            points.Add(new Vector2(rectangle.Right, rectangle.Y));
+        }
+
+        if (direction.Y > 0)
+        {
+            points.Add(new Vector2(rectangle.Right, rectangle.Bottom));
+            points.Add(new Vector2(rectangle.X, rectangle.Bottom));
+        }
+
+        foreach (var point in points)
+        {
+            //for each point that we need to check, get the title for that point
+            var tile = GetTile(point, layer);
+
+            //if the tile is null or it doesn't contain a valid collisionbox...
+            if (tile == null || tile.CollisionBox.IsEmpty)
+                continue;
+
+            //we have the tile object, but need to calculate the topLeft corner of the tile via this offset
+            var xOffset = (int)(point.X / TileWidth) * TileWidth;
+            var yOffset = (int)(point.Y / TileHeight) * TileHeight;
+
+            //we take the top left of the tile, and apply the collisionbox info to get a world position rectangle of the collision
+            //this is because the tile object itself doesn't have it's world position, that's handled by the Map.Draw()
+            var adjTileCollisionRect = new Rectangle(xOffset + tile.CollisionBox.X, yOffset + tile.CollisionBox.Y,
+                tile.CollisionBox.Width, tile.CollisionBox.Height);
+
+            //does it intersect?
+            if (adjTileCollisionRect.Intersects(rectangle))
+                return true;
+        }
+
+        return false;
     }
 }

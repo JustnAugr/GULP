@@ -11,8 +11,9 @@ public class Tile
     public int Width { get; }
     public int Height { get; }
     public int Id { get; }
+    public Rectangle CollisionBox { get; }
 
-    public Tile(Texture2D texture, int x, int y, int width, int height, int id)
+    public Tile(Texture2D texture, int x, int y, int width, int height, int id, Rectangle collisionBox)
     {
         Id = id;
         Texture = texture;
@@ -20,10 +21,17 @@ public class Tile
         Y = y;
         Width = width;
         Height = height;
+        CollisionBox = collisionBox;
     }
 
-    public void Draw(SpriteBatch spriteBatch, Vector2 position)
+    public void Draw(SpriteBatch spriteBatch, Vector2 position, float layerDepth)
     {
-        spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White);
+        //the layerDepth here takes into account the lowest Y axis of the tile (it's bottom), as well as the layerDepth
+        //- this means that a tile at layer 1 (the same layer as the player) will be drawn in front of the player if the
+        //  tile is "lower" on the screen -> this allows the the player to go "behind" a fence
+        //- anything on layer 2 should be drawn above the player due to layerDepth scalar
+        //- WINDOW_HEIGHT is used to compress the layerDepth value to a smaller scale float
+        spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White, 0, new Vector2(0, 0), 1,
+            SpriteEffects.None, (position.Y + Height)/GULPGame.WINDOW_HEIGHT*layerDepth);
     }
 }

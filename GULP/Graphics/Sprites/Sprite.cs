@@ -27,7 +27,11 @@ public class Sprite
     {
         //take the texture, extract the rectangle starting at X,Y with this height and width
         //draw it in our world at position
+        //the layerDepth that we're drawing at uses the position of the Sprite at its lowest point (feet)
+        //the lower the feet, the higher the precedence of it being drawn on top
+        //this lets us stand behind something drawn in lower on the Y axis - in the "foreground"
+        //we assume the sprite is always drawn on tile layer 1
         spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White, 0, new Vector2(0, 0), 1,
-            _spriteEffects, 0f);
+            _spriteEffects, (position.Y + Height)/GULPGame.WINDOW_HEIGHT);
     }
 }

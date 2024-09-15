@@ -10,8 +10,8 @@ public interface ICreature
     bool IsDealingDamage { get; }
     Rectangle CollisionBox { get; }
 
-    bool Walk(float x, float y, GameTime gameTime);
-    bool Attack(float x, float y, GameTime gameTime);
+    bool Walk(Vector2 direction, GameTime gameTime);
+    bool Attack(Vector2 direction, GameTime gameTime);
     bool Die();
     bool ReceiveDamage(float damageValue);
 }
