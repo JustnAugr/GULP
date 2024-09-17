@@ -26,9 +26,12 @@ public class GULPGame : Game
 
     //Textures
     private Texture2D _playerTexture;
-
-    private Player _player;
+    
     private Map _map;
+    
+    //Entities
+    private EntityManager _entityManager;
+    private Player _player;
     private Camera _camera;
 
     public GULPGame()
@@ -58,11 +61,13 @@ public class GULPGame : Game
 
         //Map
         _map = Map.Load(Path.Combine(Content.RootDirectory, TILED_PREFIX_ASSET_NAME, MAP_FILE_ASSET_NAME), Content);
-
-        //Player
+        
+        //Entities
+        _entityManager = new EntityManager();
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
         _player = new Player(_playerTexture, new Vector2(900, 540), _map); //TODO should the map be a global?
-
+        _entityManager.AddEntity(_player);
+        
         _camera = new Camera(_player, GraphicsDevice, _map);
         _inputController = new InputController(_player);
     }
@@ -74,8 +79,8 @@ public class GULPGame : Game
             Exit();
 
         _inputController.ProcessInputs(gameTime);
-        _player.Update(gameTime);
         _camera.Update(gameTime);
+        _entityManager.Update(gameTime);
 
         base.Update(gameTime);
     }
@@ -88,7 +93,7 @@ public class GULPGame : Game
             sortMode: SpriteSortMode.FrontToBack);
 
         _map.Draw(_spriteBatch);
-        _player.Draw(_spriteBatch);
+        _entityManager.Draw(_spriteBatch, gameTime);
 
         _spriteBatch.End();
         base.Draw(gameTime);
