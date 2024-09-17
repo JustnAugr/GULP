@@ -17,6 +17,7 @@ public class GULPGame : Game
     public const int WINDOW_HEIGHT = 1080;
 
     private const string PLAYER_TEXTURE_ASSET_NAME = "Sprites/player";
+    private const string SLIME_TEXTURE_ASSET_NAME = "Sprites/slime";
     private const string TILED_PREFIX_ASSET_NAME = "Tiled";
     private const string MAP_FILE_ASSET_NAME = "map.tmx";
 
@@ -65,11 +66,18 @@ public class GULPGame : Game
         //Entities
         _entityManager = new EntityManager();
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
+        //todo location from map object (non-collision object)
         _player = new Player(_playerTexture, new Vector2(900, 540), _map); //TODO should the map be a global?
+        
+        
+        var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
+        var slime = new Slime(slimeTexture, new Vector2(800, 540), _map);
+        _entityManager.AddEntity(slime);
+        
         _entityManager.AddEntity(_player);
-
+        
         _camera = new Camera(_player, GraphicsDevice, _map);
-        _inputController = new InputController(_player, _camera);
+        _inputController = new InputController(_player, _camera, slime);
     }
 
     protected override void Update(GameTime gameTime)

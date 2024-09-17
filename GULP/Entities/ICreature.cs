@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using GULP.Graphics.Sprites;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace GULP.Entities;
@@ -6,6 +7,8 @@ namespace GULP.Entities;
 public interface ICreature
 {
     float Health { get; set; }
+    Vector2 Direction { get; set; }
+    SpriteDirection AnimDirection { get; set; }
     CreatureState State { get; }
     bool IsDealingDamage { get; }
     Rectangle GetCollisionBox();

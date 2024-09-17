@@ -328,23 +328,23 @@ public class Player : IEntity, ICreature
     {
         //This will get moved into some DebugHelper or something, it allows me to see the player's actual collisionbox
         //drawn on top of the sprite
-        // if (false)
-        // {
-        //     var rect = CollisionBox;
-        //
-        //     var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
-        //     var boxData = new Color[rect.Width * rect.Height];
-        //
-        //     for (int i = 0; i < boxData.Length; i++)
-        //     {
-        //         boxData[i] = Color.Yellow;
-        //     }
-        //
-        //     boxTexture.SetData(boxData);
-        //     spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
-        //         Color.White, 0f,
-        //         Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
-        // }
+        if (false)
+        {
+            var rect = GetCollisionBox();
+        
+            var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
+            var boxData = new Color[rect.Width * rect.Height];
+        
+            for (int i = 0; i < boxData.Length; i++)
+            {
+                boxData[i] = Color.Yellow;
+            }
+        
+            boxTexture.SetData(boxData);
+            spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
+                Color.White, 0f,
+                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
+        }
 
         var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Draw(spriteBatch, Position);

@@ -11,7 +11,8 @@ public class SpriteAnimation
     private readonly float _defaultDuration;
     private readonly bool _shouldLoop;
     private readonly List<float> _spriteDurations = new();
-    private float _maxHeight;
+    private float _maxHeight = float.MinValue;
+    private float _minHeight = float.MaxValue;
 
     public readonly List<Sprite> Sprites = new();
 
@@ -61,6 +62,7 @@ public class SpriteAnimation
                 "Must specify a default SpriteAnimation duration if not passing a duration for this frame!");
 
         _maxHeight = Math.Max(_maxHeight, sprite.Height);
+        _minHeight = Math.Min(_minHeight, sprite.Height);
         Sprites.Add(sprite);
         _spriteDurations.Add(_defaultDuration);
     }
@@ -96,8 +98,11 @@ public class SpriteAnimation
         if (currentFrame >= 0 && currentFrame < Sprites.Count)
         {
             var currentSprite = Sprites[currentFrame];
-            if (currentSprite.Height < _maxHeight)
-                position = new Vector2(position.X, position.Y + (_maxHeight - currentSprite.Height));
+            
+            //we're normalizing to the smallest sprite to handle cases where were the walking animation involves a bit of an upward bob
+            //we apply that upward, not downward so that the down position is the same as our idle position
+            if (currentSprite.Height > _minHeight)
+                position = new Vector2(position.X, position.Y - (currentSprite.Height - _minHeight ));
         }
 
         Sprites[currentFrame]?.Draw(spriteBatch, position);
