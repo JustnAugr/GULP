@@ -32,6 +32,6 @@ public class Tile
         //- anything on layer 2 should be drawn above the player due to layerDepth scalar
         //- WINDOW_HEIGHT is used to compress the layerDepth value to a smaller scale float
         spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White, 0, new Vector2(0, 0), 1,
-            SpriteEffects.None, (position.Y + Height)/GULPGame.WINDOW_HEIGHT*layerDepth);
+            SpriteEffects.None, MathHelper.Clamp((position.Y + Height)/GULPGame.WINDOW_HEIGHT*layerDepth, 0f, 1f));
     }
 }
