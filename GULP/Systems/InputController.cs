@@ -30,7 +30,7 @@ public class InputController
 
         Vector2 direction = new(x, y);
 
-        if (kbState.IsKeyDown(Keys.Space) && !_previousKeyboardState.IsKeyDown(Keys.Space))
+        if (kbState.IsKeyDown(Keys.Space) && !_player.IsAttacking)
         {
             _player.Attack(direction, gameTime);
         }

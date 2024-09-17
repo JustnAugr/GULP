@@ -20,58 +20,31 @@ public class Player : IEntity, ICreature
     private const float ANIM_ATTACK_FRAME_DURATION = 1 / 10f;
 
     private const float DAMAGE_DEALING_FRAME = 1;
+    private const int COLLISION_BOX_WIDTH = 15;
+    private const int COLLISION_BOX_HEIGHT = 9;
 
     //spritesheet and animations
     private readonly Texture2D _spriteSheet;
-    private readonly Map _map;
     private SpriteAnimationColl _animColl;
 
-    private float _velocity;
 
-    public int DrawOrder => 10; //above the ground at 0
-    public Vector2 Position { get; set; }
-    public Vector2 Direction { get; set; }
-    public float Health { get; set; }
-    public CreatureState State { get; private set; }
+    private readonly Map _map;
+
+    private float _velocity;
 
     public bool IsDealingDamage => IsAttacking &&
                                    Math.Abs(_animColl.GetAnimation(State, AnimDirection).CurrentFrame -
                                             DAMAGE_DEALING_FRAME) < 0.01;
 
-    public Rectangle CollisionBox
-    {
-        get
-        {
-            //TODO jesus christ this needs cleaning, some constants
-            
-            //get our max height and width sprites for the current animation
-            var maxHSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Height);
-            var maxWSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Width);
-
-            //we use constant size for our collisionbox rather than a variable sprite inset
-            var width = 8;
-            var height = 9;
-            //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
-            //towards the feet on the y-axis
-            var rect = new Rectangle((int)Math.Floor(Position.X) + maxWSprite.Width / 2 - width / 2,
-                (int)Math.Floor(Position.Y) + (maxHSprite.Height / 2) - (int)(height / 2.5), width, height);
-            
-            //there can be cases where jamming yourself into a box on the X axis and then trying to move on the Y
-            //will cause the player to get stuck bc the collisionbox shifts as the animation does from left/right to up/down
-            //handle that by deflating by a pixel to allow us to get out of it
-            if (Direction.X == 0 && Direction.Y != 0 && State is CreatureState.Walking)
-            {
-                rect.Inflate(-1, 0);
-            }
-
-            return rect;
-        }
-    }
-
-    public SpriteDirection AnimDirection { get; set; }
-
     public bool IsAttacking => //attacking is going to be a "heavy" action, we can't cancel it
         State == CreatureState.Attacking && _animColl.GetAnimation(State, AnimDirection).IsPlaying;
+
+    public Vector2 Position { get; set; }
+    public Vector2 Direction { get; set; }
+    public float Health { get; set; }
+    public CreatureState State { get; private set; }
+
+    public SpriteDirection AnimDirection { get; set; }
 
     public Player(Texture2D spriteSheet, Vector2 position, Map map)
     {
@@ -219,6 +192,34 @@ public class Player : IEntity, ICreature
             AnimDirection = SpriteDirection.Down;
     }
 
+    public Rectangle GetCollisionBox()
+    {
+        return GetCollisionBox(Position);
+    }
+
+    public Rectangle GetCollisionBox(Vector2 position)
+    {
+        //get our max height and width sprites for the current animation
+        var maxHSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Height);
+        var maxWSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Width);
+
+        //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
+        //towards the feet on the y-axis
+        var rect = new Rectangle((int)Math.Floor(position.X) + maxWSprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
+            (int)Math.Floor(position.Y) + (maxHSprite.Height / 2) - (int)(COLLISION_BOX_HEIGHT / 2.5),
+            COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+
+        //there can be cases where jamming yourself into a box on the X axis and then trying to move on the Y
+        //will cause the player to get stuck bc the collisionBox shifts as the animation does from left/right to up/down
+        //handle that by deflating by a pixel to allow us to get out of it
+        if (Direction.X == 0 && Direction.Y != 0 && State is CreatureState.Walking)
+        {
+            rect.Inflate(-1, 0);
+        }
+
+        return rect;
+    }
+
     public bool Walk(Vector2 direction, GameTime gameTime)
     {
         //if we're currently attacking and mid animation, we can't attack-cancel to run
@@ -229,8 +230,10 @@ public class Player : IEntity, ICreature
         if (State == CreatureState.Idling)
             _velocity = INITIAL_VELOCITY;
 
+        //we're walking, in a direction, with the animation facing that direction
         State = CreatureState.Walking;
         SetAnimationDirection(direction);
+        Direction = direction;
 
         //increase our velocity by our acceleration up to our max velocity
         _velocity += ACCELERATION * (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -251,26 +254,36 @@ public class Player : IEntity, ICreature
         if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
 
-        //saving in case actually doing this movement would cause us to colide
-        var oldPosX = Position.X;
-        var oldPosY = Position.Y;
-
-        //if we can walk, what's our new direction and position?
-        Direction = direction;
-        Position = new Vector2(posX, posY);
+        //Collision checking
+        //we break up the X and Y collision checking so that we can apply them independently, for example
+        //if our player is up against a wall and trying to go diagonal -> we'd apply a sliding effect along the wall
+        var collisionDiffTol = 1e-4f;
         
-        var doesCollide = _map.DoesCollide(CollisionBox, direction, 1);
-        if (doesCollide)
+        //check Y first: get the collisionBox if we accept the new Y, and then check using JUST the Y direction
+        var directionPostCollision =
+            _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(Position.X, posY)), new Vector2(0, direction.Y),
+                1);
+        if (Math.Abs(direction.Y - directionPostCollision.Y) > collisionDiffTol)
         {
-            Debug.WriteLine("COLLISION!");
-            //reset position if we would collide by apply this position change
-            Position = new Vector2(oldPosX, oldPosY);
-        }
-        else
-        {
-            Debug.WriteLine("no collision!");
+            _velocity = Math.Max(INITIAL_VELOCITY,
+                _velocity - .25f); //we apply friction until it causes us to get down to init velocity
+            posY =
+                Position.Y + _velocity / diagonalAdj * directionPostCollision.Y; //some friction constant
         }
 
+        //now check X: get the collision box if we accept the new X, then check using JUST the X direction
+        directionPostCollision =
+            _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(posX, Position.Y)), new Vector2(direction.X, 0),
+                1);
+        if (Math.Abs(direction.X - directionPostCollision.X) > collisionDiffTol)
+        {
+            _velocity = Math.Max(INITIAL_VELOCITY,
+                _velocity - .25f); //we apply friction until it causes us to get down to init velocity
+            posX = Position.X + _velocity / diagonalAdj * directionPostCollision.X;
+        }
+
+        //apply our new position, bounded by the world and by collisions
+        Position = new Vector2(posX, posY);
         return true;
     }
 
@@ -335,7 +348,7 @@ public class Player : IEntity, ICreature
         //         Color.White, 0f,
         //         Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
         // }
-        
+
         var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Draw(spriteBatch, Position);
     }

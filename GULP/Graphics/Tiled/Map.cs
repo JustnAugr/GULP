@@ -161,59 +161,73 @@ public class Map
         return tileNumber == 0 ? null : GetTile(tileNumber);
     }
 
-    public bool DoesCollide(Rectangle rectangle, Vector2 direction, int layer)
+    public Vector2 AdjustDirectionCollisions(Rectangle rectangle, Vector2 direction, int layer)
     {
-        //TODO diagonal should only check diagonal? or we should allow to slide if one aspect the diagonal is OK
+        //for the direction we're attempting to travel, check our collisionBox against this layer's collision tiles
+        //if there is a collision, negate that direction's attempted travel so that we can apply this new direction, 
+        //possibly negating it entirely, or partially (sliding), or not at all!
+        Vector2 newDirection = direction;
 
-        //for the four corners of our entity's rectangle, pick which corners to actually check based on direction vector
-        var points = new HashSet<Vector2>();
         if (direction.X > 0)
         {
-            points.Add(new Vector2(rectangle.Right, rectangle.Y));
-            points.Add(new Vector2(rectangle.Right, rectangle.Bottom));
+            var topRight = CheckRectPosCollision(new Vector2(rectangle.Right, rectangle.Y), rectangle, layer);
+            var bottomRight = CheckRectPosCollision(new Vector2(rectangle.Right, rectangle.Bottom), rectangle, layer);
+
+            if (topRight || bottomRight)
+                newDirection.X = 0;
         }
 
         if (direction.X < 0)
         {
-            points.Add(new Vector2(rectangle.X, rectangle.Y));
-            points.Add(new Vector2(rectangle.X, rectangle.Bottom));
+            var topLeft = CheckRectPosCollision(new Vector2(rectangle.X, rectangle.Y), rectangle, layer);
+            var bottomLeft = CheckRectPosCollision(new Vector2(rectangle.X, rectangle.Bottom), rectangle, layer);
+
+            if (topLeft || bottomLeft)
+                newDirection.X = 0;
         }
 
         if (direction.Y < 0)
         {
-            points.Add(new Vector2(rectangle.X, rectangle.Y));
-            points.Add(new Vector2(rectangle.Right, rectangle.Y));
+            var topLeft = CheckRectPosCollision(new Vector2(rectangle.X, rectangle.Y), rectangle, layer);
+            var topRight = CheckRectPosCollision(new Vector2(rectangle.Right, rectangle.Y), rectangle, layer);
+
+            if (topLeft || topRight)
+                newDirection.Y = 0;
         }
 
         if (direction.Y > 0)
         {
-            points.Add(new Vector2(rectangle.Right, rectangle.Bottom));
-            points.Add(new Vector2(rectangle.X, rectangle.Bottom));
+            var bottomLeft = CheckRectPosCollision(new Vector2(rectangle.X, rectangle.Bottom), rectangle, layer);
+            var bottomRight = CheckRectPosCollision(new Vector2(rectangle.Right, rectangle.Bottom), rectangle, layer);
+
+            if (bottomLeft || bottomRight)
+                newDirection.Y = 0;
         }
 
-        foreach (var point in points)
-        {
-            //for each point that we need to check, get the title for that point
-            var tile = GetTile(point, layer);
+        return newDirection;
+    }
 
-            //if the tile is null or it doesn't contain a valid collisionbox...
-            if (tile == null || tile.CollisionBox.IsEmpty)
-                continue;
+    private bool CheckRectPosCollision(Vector2 position, Rectangle rectangle, int layer)
+    {
+        //for a given point, get the tile at this layer at this point, and check the given collisionbox against it
+        //this allows us to just check a single point on the collisionBox, rather than all 4
 
-            //we have the tile object, but need to calculate the topLeft corner of the tile via this offset
-            var xOffset = (int)(point.X / TileWidth) * TileWidth;
-            var yOffset = (int)(point.Y / TileHeight) * TileHeight;
+        var tile = GetTile(position, layer);
 
-            //we take the top left of the tile, and apply the collisionbox info to get a world position rectangle of the collision
-            //this is because the tile object itself doesn't have it's world position, that's handled by the Map.Draw()
-            var adjTileCollisionRect = new Rectangle(xOffset + tile.CollisionBox.X, yOffset + tile.CollisionBox.Y,
-                tile.CollisionBox.Width, tile.CollisionBox.Height);
+        //if the tile is null or it doesn't contain a valid collisionbox...
+        if (tile == null || tile.CollisionBox.IsEmpty)
+            return false;
 
-            //does it intersect?
-            if (adjTileCollisionRect.Intersects(rectangle))
-                return true;
-        }
+        //we have the tile object, but need to calculate the topLeft corner of the tile via this offset
+        var xOffset = (int)(position.X / TileWidth) * TileWidth;
+        var yOffset = (int)(position.Y / TileHeight) * TileHeight;
 
-        return false;
+        //we take the top left of the tile, and apply the collisionbox info to get a world position rectangle of the collision
+        //this is because the tile object itself doesn't have it's world position, that's handled by the Map.Draw()
+        var adjTileCollisionRect = new Rectangle(xOffset + tile.CollisionBox.X, yOffset + tile.CollisionBox.Y,
+            tile.CollisionBox.Width, tile.CollisionBox.Height);
+
+        //does it intersect?
+        return adjTileCollisionRect.Intersects(rectangle);
     }
 }
