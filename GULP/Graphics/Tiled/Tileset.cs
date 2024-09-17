@@ -72,47 +72,12 @@ public class Tileset
                                 int.Parse(reader.GetAttribute("height") ?? throw new InvalidOperationException());
                             break;
                         case "tile":
+                            //tileId is local to this tileset, so later we'll add it to the gid to get real tile number
                             var tileId = int.Parse(reader.GetAttribute("id") ?? throw new InvalidOperationException());
-
-                            //TODO this should be a separate method...
+                            //load any objects on the tile: collisions, etc
                             var st = reader.ReadSubtree();
                             st.Read();
-                            while (st.Read())
-                            {
-                                var stName = st.Name;
-                                switch (st.NodeType)
-                                {
-                                    case XmlNodeType.Element:
-                                        switch (stName)
-                                        {
-                                            case "object":
-                                                var objectType = st.GetAttribute("type");
-                                                //eventually we'll need to handle other object types
-                                                if (objectType == "Collision")
-                                                {
-                                                    var x = int.Parse(reader.GetAttribute("x") ??
-                                                                      throw new InvalidOperationException());
-                                                    var y = int.Parse(reader.GetAttribute("y") ??
-                                                                      throw new InvalidOperationException());
-                                                    var width = int.Parse(reader.GetAttribute("width") ??
-                                                                          throw new InvalidOperationException());
-                                                    var height = int.Parse(reader.GetAttribute("height") ??
-                                                                           throw new InvalidOperationException());
-
-                                                    objects.Add(tileId, new Rectangle(x, y, width, height));
-                                                }
-
-                                                break;
-                                        }
-
-                                        break;
-                                    case XmlNodeType.EndElement:
-                                        break;
-                                    case XmlNodeType.Whitespace:
-                                        break;
-                                }
-                            }
-
+                            LoadObjects(st, tileId, objects);
                             break;
                     }
 
@@ -147,5 +112,31 @@ public class Tileset
         }
 
         return result;
+    }
+
+    private static void LoadObjects(XmlReader reader, int tileId, Dictionary<int, Rectangle> objects)
+    {
+        while (reader.Read())
+        {
+            var name = reader.Name;
+            if (reader.NodeType == XmlNodeType.Element && name == "object")
+            {
+                var objectType = reader.GetAttribute("type");
+                //eventually we'll need to handle other object types
+                if (objectType == "Collision")
+                {
+                    var x = int.Parse(reader.GetAttribute("x") ??
+                                      throw new InvalidOperationException());
+                    var y = int.Parse(reader.GetAttribute("y") ??
+                                      throw new InvalidOperationException());
+                    var width = int.Parse(reader.GetAttribute("width") ??
+                                          throw new InvalidOperationException());
+                    var height = int.Parse(reader.GetAttribute("height") ??
+                                           throw new InvalidOperationException());
+
+                    objects.Add(tileId, new Rectangle(x, y, width, height));
+                }
+            }
+        }
     }
 }

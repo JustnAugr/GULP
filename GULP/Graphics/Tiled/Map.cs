@@ -139,9 +139,21 @@ public class Map
     {
         //return the last tileset whose firstgid is <= our tilenumber
         //ie if our tileNumber is 40 and the first gid of this tileset is 35 but the next tileset's first gid is 50
-        //then we want the one with firsgid=35
-        //todo realistically we won't ever, and shouldn't ever, have many tilesets because we want to minimize different textures, but I would like to optimize this - i hate doing the where and maxby separately
-        var tileset = Tilesets.Where(ts => ts.Firstgid <= tileNumber).MaxBy(ts => ts.Firstgid);
+        //then we want the one with firsgid=35, as this will contain our tile
+        Tileset tileset = null;
+        var gidMax = -1;
+        foreach (var ts in Tilesets)
+        {
+            if (ts.Firstgid <= tileNumber && ts.Firstgid > gidMax)
+            {
+                tileset = ts;
+                gidMax = ts.Firstgid;
+            }
+        }
+        
+        if (tileset == null)
+            throw new Exception("Unable to find tile for tileNumber:" + tileNumber);
+        
         return tileset.Tiles[tileNumber - tileset.Firstgid]; //offset it by the firstgid as tileNumber is absolute
     }
 

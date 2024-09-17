@@ -7,30 +7,29 @@ namespace GULP.Systems;
 
 public class Camera
 {
-    private readonly Player _player;
+    private readonly IEntity _entityToFollow;
     private readonly GraphicsDevice _graphicsDevice;
     private readonly Map _map;
 
     public float PositionX { get; private set; }
     public float PositionY { get; private set; }
 
-    public Camera(Player player, GraphicsDevice graphicsDevice, Map map)
+    public Camera(IEntity entity, GraphicsDevice graphicsDevice, Map map)
     {
-        _player = player; //TODO should we have the camera have a follow(entity) method? more generic
+        _entityToFollow = entity;
         _graphicsDevice = graphicsDevice;
         _map = map;
     }
 
     public void Update(GameTime gameTime)
     {
-        PositionX = _player.Position.X;
-        PositionY = _player.Position.Y;
+        PositionX = _entityToFollow.Position.X;
+        PositionY = _entityToFollow.Position.Y;
     }
 
     public Matrix GetTransformationMatrix()
     {
-        //todo this obviously needs cleaning in terms of zoom, constants etc
-        
+        //todo gotta rip this zoom out into a settings page
         //additional zoom factor to be toggleable in settings separate from resolution
         var zoom = 2.5f;
 

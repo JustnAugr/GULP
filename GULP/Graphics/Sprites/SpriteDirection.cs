@@ -1,4 +1,4 @@
-﻿namespace GULP.Entities;
+﻿namespace GULP.Graphics.Sprites;
 
 public enum SpriteDirection
 {
