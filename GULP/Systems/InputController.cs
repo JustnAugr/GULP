@@ -7,22 +7,46 @@ namespace GULP.Systems;
 
 public class InputController
 {
+    private const float CAMERA_ZOOM_STEP = .5f;
+
     private readonly Player _player;
+    private readonly Camera _camera;
     private KeyboardState _previousKeyboardState;
 
-    public InputController(Player player)
+    public InputController(Player player, Camera camera)
     {
         _player = player;
+        _camera = camera;
     }
 
     public void ProcessInputs(GameTime gameTime)
     {
-        var kbState = Keyboard.GetState();
+        var keyboardState = Keyboard.GetState();
 
-        var downPressed = kbState.IsKeyDown(Keys.Down) || kbState.IsKeyDown(Keys.S);
-        var upPressed = kbState.IsKeyDown(Keys.Up) || kbState.IsKeyDown(Keys.W);
-        var leftPressed = kbState.IsKeyDown(Keys.Left) || kbState.IsKeyDown(Keys.A);
-        var rightPressed = kbState.IsKeyDown(Keys.Right) || kbState.IsKeyDown(Keys.D);
+        ProcessCameraInputs(keyboardState);
+        ProcessPlayerInputs(keyboardState, gameTime);
+
+        _previousKeyboardState = keyboardState;
+    }
+
+    private void ProcessCameraInputs(KeyboardState keyboardState)
+    {
+        if (keyboardState.IsKeyDown(Keys.OemPlus) && !_previousKeyboardState.IsKeyDown(Keys.OemPlus))
+        {
+            _camera.Zoom += CAMERA_ZOOM_STEP;
+        }
+        else if (keyboardState.IsKeyDown(Keys.OemMinus) && !_previousKeyboardState.IsKeyDown(Keys.OemMinus))
+        {
+            _camera.Zoom -= CAMERA_ZOOM_STEP;
+        }
+    }
+
+    private void ProcessPlayerInputs(KeyboardState keyboardState, GameTime gameTime)
+    {
+        var downPressed = keyboardState.IsKeyDown(Keys.Down) || keyboardState.IsKeyDown(Keys.S);
+        var upPressed = keyboardState.IsKeyDown(Keys.Up) || keyboardState.IsKeyDown(Keys.W);
+        var leftPressed = keyboardState.IsKeyDown(Keys.Left) || keyboardState.IsKeyDown(Keys.A);
+        var rightPressed = keyboardState.IsKeyDown(Keys.Right) || keyboardState.IsKeyDown(Keys.D);
 
         //create a directional vector based on which WASD keys are pressed
         float x = leftPressed ? -1 : rightPressed ? 1 : 0;
@@ -30,7 +54,7 @@ public class InputController
 
         Vector2 direction = new(x, y);
 
-        if (kbState.IsKeyDown(Keys.Space) && !_player.IsAttacking)
+        if (keyboardState.IsKeyDown(Keys.Space) && !_player.IsAttacking)
         {
             _player.Attack(direction, gameTime);
         }
@@ -42,7 +66,5 @@ public class InputController
         {
             _player.Idle();
         }
-
-        _previousKeyboardState = kbState;
     }
 }

@@ -11,7 +11,7 @@ namespace GULP.Entities;
 public class Player : IEntity, ICreature
 {
     private const float ACCELERATION = 1.0f;
-    private const float MAX_VELOCITY = 5.0f;
+    private const float MAX_VELOCITY = 2.5f;
     private const float INITIAL_VELOCITY = 1.0f;
 
     //animation frame durations
@@ -23,12 +23,9 @@ public class Player : IEntity, ICreature
     private const int COLLISION_BOX_WIDTH = 15;
     private const int COLLISION_BOX_HEIGHT = 9;
 
-    //spritesheet and animations
+    private readonly Map _map;
     private readonly Texture2D _spriteSheet;
     private SpriteAnimationColl _animColl;
-
-
-    private readonly Map _map;
 
     private float _velocity;
 
@@ -258,7 +255,7 @@ public class Player : IEntity, ICreature
         //we break up the X and Y collision checking so that we can apply them independently, for example
         //if our player is up against a wall and trying to go diagonal -> we'd apply a sliding effect along the wall
         var collisionDiffTol = 1e-4f;
-        
+
         //check Y first: get the collisionBox if we accept the new Y, and then check using JUST the Y direction
         var directionPostCollision =
             _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(Position.X, posY)), new Vector2(0, direction.Y),
