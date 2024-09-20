@@ -11,14 +11,12 @@ public class InputController
 
     private readonly Player _player;
     private readonly Camera _camera;
-    private readonly Slime _slime;
     private KeyboardState _previousKeyboardState;
 
-    public InputController(Player player, Camera camera, Slime slime)
+    public InputController(Player player, Camera camera)
     {
         _player = player;
         _camera = camera;
-        _slime = slime;
     }
 
     public void ProcessInputs(GameTime gameTime)
@@ -27,9 +25,6 @@ public class InputController
 
         ProcessCameraInputs(keyboardState);
         ProcessPlayerInputs(keyboardState, gameTime);
-        
-        //TODO temp for testing before we add an AI controller
-        ProcessSlimeInputs(keyboardState, gameTime);
 
         _previousKeyboardState = keyboardState;
     }
@@ -70,29 +65,6 @@ public class InputController
         else
         {
             _player.Idle();
-        }
-    }
-    
-    private void ProcessSlimeInputs(KeyboardState keyboardState, GameTime gameTime)
-    {
-        var downPressed = keyboardState.IsKeyDown(Keys.J);
-        var upPressed = keyboardState.IsKeyDown(Keys.U);
-        var leftPressed = keyboardState.IsKeyDown(Keys.H);
-        var rightPressed = keyboardState.IsKeyDown(Keys.K);
-
-        //create a directional vector based on which WASD keys are pressed
-        float x = leftPressed ? -1 : rightPressed ? 1 : 0;
-        float y = upPressed ? -1 : downPressed ? 1 : 0;
-
-        Vector2 direction = new(x, y);
-        
-        if (downPressed || upPressed || leftPressed || rightPressed)
-        {
-            _slime.Walk(direction, gameTime);
-        }
-        else
-        {
-            _slime.Idle();
         }
     }
 }

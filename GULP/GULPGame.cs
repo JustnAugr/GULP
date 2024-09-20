@@ -64,20 +64,23 @@ public class GULPGame : Game
         _map = Map.Load(Path.Combine(Content.RootDirectory, TILED_PREFIX_ASSET_NAME, MAP_FILE_ASSET_NAME), Content);
 
         //Entities
-        _entityManager = new EntityManager();
+        _entityManager = new EntityManager(_map);
+
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
-        //todo location from map object (non-collision object)
-        _player = new Player(_playerTexture, new Vector2(900, 540), _map); //TODO should the map be a global?
-        
-        
-        var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
-        var slime = new Slime(slimeTexture, new Vector2(800, 540), _map);
-        _entityManager.AddEntity(slime);
-        
-        _entityManager.AddEntity(_player);
-        
+        _player = new Player(_playerTexture, new Vector2(900, 540), _map,
+            _entityManager); //todo location from map object (non-collision object)
+
+        //TODO should the map and camera be globals? especially considering we're using them for things like draw culling...
         _camera = new Camera(_player, GraphicsDevice, _map);
-        _inputController = new InputController(_player, _camera, slime);
+        _map.Camera = _camera;
+
+        var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
+        var slime = new Slime(slimeTexture, new Vector2(800, 540), _map, _camera);
+
+        _entityManager.AddEntity(slime);
+        _entityManager.AddEntity(_player);
+
+        _inputController = new InputController(_player, _camera);
     }
 
     protected override void Update(GameTime gameTime)

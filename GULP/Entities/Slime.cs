@@ -1,18 +1,21 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
+using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace GULP.Entities;
 
-public class Slime : IEntity, ICreature
+public class Slime : ICreature
 {
     private const float WALK_VELOCITY = 2.0f;
-    
+
     private readonly Texture2D _spriteSheet;
     private readonly Map _map;
+    private readonly Camera _camera;
     private SpriteAnimationColl _animColl;
 
     public bool IsDealingDamage { get; }
@@ -22,11 +25,12 @@ public class Slime : IEntity, ICreature
     public CreatureState State { get; private set; }
     public SpriteDirection AnimDirection { get; set; }
 
-    public Slime(Texture2D spriteSheet, Vector2 position, Map map)
+    public Slime(Texture2D spriteSheet, Vector2 position, Map map, Camera camera)
     {
         _spriteSheet = spriteSheet;
         Position = position;
         _map = map;
+        _camera = camera;
 
         State = CreatureState.Idling;
 
@@ -114,34 +118,25 @@ public class Slime : IEntity, ICreature
     {
         return GetCollisionBox(Position);
     }
-    
+
     public Rectangle GetCollisionBox(Vector2 position)
     {
         //get our max height and width sprites for the current animation
-        var maxHSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Height);
-        var maxWSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Width);
+        var sprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
 
         //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
         //towards the feet on the y-axis
-        var COLLISION_BOX_WIDTH = 10;
-        var COLLISION_BOX_HEIGHT = 10;
-        
-        var rect = new Rectangle((int)Math.Floor(position.X) + maxWSprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
-            (int)Math.Floor(position.Y) + (maxHSprite.Height / 2) - (int)(COLLISION_BOX_HEIGHT / 2.5),
-            COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+        var COLLISION_BOX_WIDTH = 12;
+        var COLLISION_BOX_HEIGHT = 12;
 
-        //there can be cases where jamming yourself into a box on the X axis and then trying to move on the Y
-        //will cause the player to get stuck bc the collisionBox shifts as the animation does from left/right to up/down
-        //handle that by deflating by a pixel to allow us to get out of it
-        if (Direction.X == 0 && Direction.Y != 0 && State is CreatureState.Walking)
-        {
-            rect.Inflate(-1, 0);
-        }
+        var rect = new Rectangle((int)Math.Floor(position.X) + sprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
+            (int)Math.Floor(position.Y) - (int)(sprite.Height / 2.5),
+            COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
 
         return rect;
     }
-    
-    private void SetAnimationDirection(Vector2 direction)
+
+    private SpriteDirection GetAnimationDirection(Vector2 direction)
     {
         //TODO shared between player, move it
         var x = direction.X;
@@ -150,75 +145,87 @@ public class Slime : IEntity, ICreature
         //if we're moving left or right (non-diag or diag), we should face that way
         //else just face up or down
         if (x < 0)
-            AnimDirection = SpriteDirection.Left;
-        else if (x > 0)
-            AnimDirection = SpriteDirection.Right;
-        else if (y < 0)
-            AnimDirection = SpriteDirection.Up;
-        else if (y > 0)
-            AnimDirection = SpriteDirection.Down;
+            return SpriteDirection.Left;
+        if (x > 0)
+            return SpriteDirection.Right;
+        if (y < 0)
+            return SpriteDirection.Up;
+        if (y > 0)
+            return SpriteDirection.Down;
+
+        return SpriteDirection.Down;
     }
 
     public bool Walk(Vector2 direction, GameTime gameTime)
     {
-        //TODO I want this to be a "heavy" action where the animation gets locked in, even if positionally blocked by collision
-        //TODO collision with other entities
-        State = CreatureState.Walking;
-        SetAnimationDirection(direction);
-        Direction = direction;
-        
-        _animColl.GetAnimation(State, AnimDirection).Play();
-        
-        //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
-        var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
-
-        //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
-        var posX = Position.X + (WALK_VELOCITY / diagonalAdj) * direction.X;
-        var posY = Position.Y + (WALK_VELOCITY / diagonalAdj) * direction.Y;
-
-        //simple bounding for now to prevent us from going off screen
-        var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
-        if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
-            posX = Position.X;
-
-        if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
-            posY = Position.Y;
-
-        //Collision checking
-        //we break up the X and Y collision checking so that we can apply them independently, for example
-        //if our player is up against a wall and trying to go diagonal -> we'd apply a sliding effect along the wall
-        var collisionDiffTol = 1e-4f;
-
-        //check Y first: get the collisionBox if we accept the new Y, and then check using JUST the Y direction
-        var directionPostCollision =
-            _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(Position.X, posY)), new Vector2(0, direction.Y),
-                1);
-        if (Math.Abs(direction.Y - directionPostCollision.Y) > collisionDiffTol)
-        {
-            posY =
-                Position.Y + WALK_VELOCITY / diagonalAdj * directionPostCollision.Y; //some friction constant
-        }
-
-        //now check X: get the collision box if we accept the new X, then check using JUST the X direction
-        directionPostCollision =
-            _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(posX, Position.Y)), new Vector2(direction.X, 0),
-                1);
-        if (Math.Abs(direction.X - directionPostCollision.X) > collisionDiffTol)
-        {
-            posX = Position.X + WALK_VELOCITY / diagonalAdj * directionPostCollision.X;
-        }
-
-        //apply our new position, bounded by the world and by collisions
-        Position = new Vector2(posX, posY);
-        
+        //TODO... later, let's sort out player first...
         return true;
+        // //if we weren't walking previously, or the animation direction was different then reset the playback before
+        // //we change animations, so that if we later resume this animation it'll start from the beginning
+        // var newAnimationDirection = GetAnimationDirection(direction);
+        // if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
+        // {
+        //     _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
+        // }
+        //
+        // //set new values pertaining to the state of this entity
+        // State = CreatureState.Walking;
+        // AnimDirection = newAnimationDirection;
+        // Direction = direction;
+        //
+        // //ensure we're playin our animation if we've just changed from another one
+        // _animColl.GetAnimation(State, AnimDirection).Play();
+        //
+        // //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
+        // var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
+        //
+        // //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
+        // var posX = Position.X + (WALK_VELOCITY / diagonalAdj) * direction.X;
+        // var posY = Position.Y + (WALK_VELOCITY / diagonalAdj) * direction.Y;
+        //
+        // //simple bounding for now to prevent us from going off screen
+        // var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
+        // if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
+        //     posX = Position.X;
+        //
+        // if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
+        //     posY = Position.Y;
+        //
+        // //Collision checking
+        // //we break up the X and Y collision checking so that we can apply them independently, for example
+        // //if our player is up against a wall and trying to go diagonal -> we'd apply a sliding effect along the wall
+        // var collisionDiffTol = 1e-4f;
+        //
+        // //check Y first: get the collisionBox if we accept the new Y, and then check using JUST the Y direction
+        // var directionPostCollision =
+        //     _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(Position.X, posY)), new Vector2(0, direction.Y),
+        //         1);
+        // if (Math.Abs(direction.Y - directionPostCollision.Y) > collisionDiffTol)
+        // {
+        //     posY =
+        //         Position.Y + WALK_VELOCITY / diagonalAdj * directionPostCollision.Y; //some friction constant
+        // }
+        //
+        // //now check X: get the collision box if we accept the new X, then check using JUST the X direction
+        // directionPostCollision =
+        //     _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(posX, Position.Y)), new Vector2(direction.X, 0),
+        //         1);
+        // if (Math.Abs(direction.X - directionPostCollision.X) > collisionDiffTol)
+        // {
+        //     posX = Position.X + WALK_VELOCITY / diagonalAdj * directionPostCollision.X;
+        // }
+        //
+        // //apply our new position, bounded by the world and by collisions
+        // NextPosition = new Vector2(posX, posY);
+        //
+        // return true;
     }
 
     public void Idle()
     {
         if (State != CreatureState.Idling)
             _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-        
+
         //todo add to iface
         State = CreatureState.Idling;
         _animColl.GetAnimation(State, AnimDirection).Play();
@@ -247,7 +254,29 @@ public class Slime : IEntity, ICreature
 
     public void Draw(SpriteBatch spriteBatch)
     {
-        //todo should this take a "layer" param to allow us to draw slimes just below players for example?
+        //TODO make this into a more general function, as it's the draw culling method
+        if (Position.X + 30 < _camera.Left || Position.X > _camera.Right || Position.Y + 30 < _camera.Top ||
+            Position.Y > _camera.Bottom)
+            return;
+        
+        if (false)
+        {
+            //todo why is this so fucking intensive????? lags like crazy
+            var rect = GetCollisionBox();
+
+            var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
+            var boxData = new Color[rect.Width * rect.Height];
+
+            for (int i = 0; i < boxData.Length; i++)
+            {
+                boxData[i] = Color.Yellow;
+            }
+
+            boxTexture.SetData(boxData);
+            spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
+                Color.White, 0f,
+                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
+        }
         
         var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Draw(spriteBatch, Position);

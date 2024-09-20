@@ -14,6 +14,12 @@ public class Camera
 
     public float PositionX { get; private set; }
     public float PositionY { get; private set; }
+    
+    public float Left => -(GetTransformationMatrix().Translation.X / Zoom);
+    public float Right => Left + GULPGame.WINDOW_WIDTH / Zoom;
+    
+    public float Top => -(GetTransformationMatrix().Translation.Y / Zoom);
+    public float Bottom => Top + GULPGame.WINDOW_HEIGHT / Zoom;
 
     public float Zoom //additional zoom factor separate from resolution
     {

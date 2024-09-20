@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace GULP.Entities;
 
-public class Player : IEntity, ICreature
+public class Player : ICreature
 {
     private const float ACCELERATION = 1.0f;
     private const float MAX_VELOCITY = 2.5f;
@@ -24,6 +24,7 @@ public class Player : IEntity, ICreature
     private const int COLLISION_BOX_HEIGHT = 9;
 
     private readonly Map _map;
+    private readonly EntityManager _entityManager;
     private readonly Texture2D _spriteSheet;
     private SpriteAnimationColl _animColl;
 
@@ -43,10 +44,11 @@ public class Player : IEntity, ICreature
 
     public SpriteDirection AnimDirection { get; set; }
 
-    public Player(Texture2D spriteSheet, Vector2 position, Map map)
+    public Player(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager)
     {
         _spriteSheet = spriteSheet;
         _map = map;
+        _entityManager = entityManager;
 
         //values on initialization
         Position = position;
@@ -243,6 +245,8 @@ public class Player : IEntity, ICreature
         var posX = Position.X + (_velocity / diagonalAdj) * direction.X;
         var posY = Position.Y + (_velocity / diagonalAdj) * direction.Y;
 
+        Debug.WriteLine(posY);
+
         //simple bounding for now to prevent us from going off screen
         var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
         if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
@@ -251,36 +255,87 @@ public class Player : IEntity, ICreature
         if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
 
-        //Collision checking
-        //we break up the X and Y collision checking so that we can apply them independently, for example
-        //if our player is up against a wall and trying to go diagonal -> we'd apply a sliding effect along the wall
-        var collisionDiffTol = 1e-4f;
+        //Collision Checking v2 //TODO pull this out to a new method, a lot of it is shared between creatures as well
+        //these are the tiles we'd be at if we moved in just the Y direction
+        var collisionBoxY = GetCollisionBox(new Vector2(Position.X, posY));
+        var tilesY = _map.GetTiles(collisionBoxY);
+        //these are the collisions we'd meet at those tiles
+        var collisionsY = _map.GetTileCollisions(tilesY);
 
-        //check Y first: get the collisionBox if we accept the new Y, and then check using JUST the Y direction
-        var directionPostCollision =
-            _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(Position.X, posY)), new Vector2(0, direction.Y),
-                1);
-        if (Math.Abs(direction.Y - directionPostCollision.Y) > collisionDiffTol)
+        foreach (var tile in tilesY)
         {
-            _velocity = Math.Max(INITIAL_VELOCITY,
-                _velocity - .25f); //we apply friction until it causes us to get down to init velocity
-            posY =
-                Position.Y + _velocity / diagonalAdj * directionPostCollision.Y; //some friction constant
+            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            if (creatureListExists && creatureList is { Count: > 0 })
+            {
+                foreach (var creature in creatureList)
+                {
+                    if (creature != this)
+                        collisionsY.Add(creature.GetCollisionBox());
+                }
+            }
         }
 
-        //now check X: get the collision box if we accept the new X, then check using JUST the X direction
-        directionPostCollision =
-            _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(posX, Position.Y)), new Vector2(direction.X, 0),
-                1);
-        if (Math.Abs(direction.X - directionPostCollision.X) > collisionDiffTol)
+        foreach (var collision in collisionsY)
         {
-            _velocity = Math.Max(INITIAL_VELOCITY,
-                _velocity - .25f); //we apply friction until it causes us to get down to init velocity
-            posX = Position.X + _velocity / diagonalAdj * directionPostCollision.X;
+            //we're only applying the Y movement, so just check the Y direction
+            if (direction.Y != 0)
+            {
+                if (collision.Intersects(collisionBoxY))
+                {
+                    direction.Y = 0;
+                    _velocity = Math.Max(INITIAL_VELOCITY,
+                        _velocity - .25f); //we apply friction until it causes us to get down to init velocity
+                    posY =
+                        Position.Y + _velocity / diagonalAdj * direction.Y; //some friction constant
+                }
+            }
+        }
+
+        //these are the tiles we'd be at if we moved in just the Y direction
+        var collisionBoxX = GetCollisionBox(new Vector2(posX, Position.Y));
+        var tilesX = _map.GetTiles(collisionBoxX);
+        //these are the collisions we'd meet at those tiles
+        var collisionsX = _map.GetTileCollisions(tilesX);
+
+        foreach (var tile in tilesX)
+        {
+            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            if (creatureListExists && creatureList is { Count: > 0 })
+            {
+                foreach (var creature in creatureList)
+                {
+                    if (creature != this)
+                        collisionsX.Add(creature.GetCollisionBox());
+                }
+            }
+        }
+
+        foreach (var collision in collisionsX)
+        {
+            //we're only applying the Y movement, so just check the Y direction
+            if (direction.X != 0)
+            {
+                if (collision.Intersects(collisionBoxX))
+                {
+                    direction.X = 0;
+                    _velocity = Math.Max(INITIAL_VELOCITY,
+                        _velocity - .25f); //we apply friction until it causes us to get down to init velocity
+                    posX = Position.X + _velocity / diagonalAdj * direction.X;
+                }
+            }
         }
 
         //apply our new position, bounded by the world and by collisions
-        Position = new Vector2(posX, posY);
+        //also update our tile->creature position dicts
+        var oldPosition = Position;
+        Position = new Vector2(posX, posY);;
+        
+        if (oldPosition != Position)
+        {
+            _entityManager.RemoveTileCreaturePosition(this, oldPosition);
+            _entityManager.AddTileCreaturePosition(this, Position);
+        }
+
         return true;
     }
 
@@ -322,6 +377,11 @@ public class Player : IEntity, ICreature
     {
         var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Update(gameTime);
+
+        //say we were attacking and this .Update() finished the attack animation,
+        //rather than draw nothing we should go idle
+        if (!animation.IsPlaying)
+            Idle();
     }
 
     public void Draw(SpriteBatch spriteBatch)
@@ -331,15 +391,15 @@ public class Player : IEntity, ICreature
         if (false)
         {
             var rect = GetCollisionBox();
-        
+
             var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
             var boxData = new Color[rect.Width * rect.Height];
-        
+
             for (int i = 0; i < boxData.Length; i++)
             {
-                boxData[i] = Color.Yellow;
+                boxData[i] = Color.Cyan;
             }
-        
+
             boxTexture.SetData(boxData);
             spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
                 Color.White, 0f,
