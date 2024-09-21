@@ -7,7 +7,7 @@ namespace GULP.Systems;
 
 public class Camera
 {
-    private const int STARTING_ZOOM_VALUE = 2;
+    private const int STARTING_ZOOM_VALUE = 3;
     
     private readonly IEntity _entityToFollow;
     private readonly GraphicsDevice _graphicsDevice;

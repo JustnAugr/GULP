@@ -11,7 +11,7 @@ namespace GULP.Entities;
 public class Player : ICreature
 {
     private const float ACCELERATION = 1.0f;
-    private const float MAX_VELOCITY = 2.5f;
+    private const float MAX_VELOCITY = 3.0f;
     private const float INITIAL_VELOCITY = 1.0f;
 
     //animation frame durations

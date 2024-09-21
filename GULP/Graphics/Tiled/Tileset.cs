@@ -11,6 +11,12 @@ namespace GULP.Graphics.Tiled;
 
 public class Tileset
 {
+    public struct TileFrameInfo
+    {
+        public int tileId;
+        public float duration;
+    }
+
     public readonly List<Tile> Tiles = new();
 
     public int Firstgid { get; private set; }
@@ -35,8 +41,9 @@ public class Tileset
         {
             DtdProcessing = DtdProcessing.Parse
         };
-        
+
         Dictionary<int, Rectangle> objects = new();
+        Dictionary<int, List<TileFrameInfo>> animations = new();
 
         //scope of the using definiton is automatically defined as end of the current code block
         using var stream = File.OpenText(Path.Combine(content.RootDirectory, "Tiled", filename));
@@ -77,7 +84,7 @@ public class Tileset
                             //load any objects on the tile: collisions, etc
                             var st = reader.ReadSubtree();
                             st.Read();
-                            LoadTileInfo(st, tileId, objects); //TODO expand this for animations...
+                            LoadTileInfo(st, tileId, objects, animations); //TODO expand this for animations...
                             break;
                     }
 
@@ -111,10 +118,30 @@ public class Tileset
             }
         }
 
+        foreach (KeyValuePair<int, List<TileFrameInfo>> keyValuePair in animations)
+        {
+            var tileId = keyValuePair.Key;
+            var frameInfos = keyValuePair.Value;
+
+            var tile = result.Tiles[tileId];
+            var tileAnimation = new AnimatedTile(tile);
+
+            foreach (var frameInfo in frameInfos)
+            {
+                tileAnimation.AddFrame(result.Tiles[frameInfo.tileId], frameInfo.duration);
+            }
+
+            //TODO we could hit a case where this tile that we've now replaced with an animation could be re-used in another animation
+            //this would cause errors, so the "safer way" would be to store these tileAnimations off to the side in a dict
+            //and then do the below replace after processing all of them
+            result.Tiles[tileId] = tileAnimation;
+        }
+
         return result;
     }
 
-    private static void LoadTileInfo(XmlReader reader, int tileId, Dictionary<int, Rectangle> objects)
+    private static void LoadTileInfo(XmlReader reader, int tileId, Dictionary<int, Rectangle> objects,
+        Dictionary<int, List<TileFrameInfo>> animations)
     {
         while (reader.Read())
         {
@@ -125,7 +152,7 @@ public class Tileset
 
                 if (objectType is null)
                     throw new ArgumentNullException(nameof(objectType), "Object Type can't be null!");
-                
+
                 if (objectType.ToLower().Equals("collision"))
                 {
                     var x = int.Parse(reader.GetAttribute("x") ??
@@ -144,6 +171,40 @@ public class Tileset
                     throw new ArgumentException("Can't recognize objectType!", objectType);
                 }
             }
+            else if (reader.NodeType == XmlNodeType.Element && name == "animation")
+            {
+                animations[tileId] = new List<TileFrameInfo>();
+
+                while (reader.Read())
+                {
+                    var subName = reader.Name;
+                    if (reader.NodeType == XmlNodeType.Element && subName == "frame")
+                    {
+                        var animTileId =
+                            int.Parse(reader.GetAttribute("tileid") ?? throw new InvalidOperationException());
+                        var duration =
+                            int.Parse(reader.GetAttribute("duration") ?? throw new InvalidOperationException());
+
+                        var animationTile = new TileFrameInfo()
+                        {
+                            tileId = animTileId,
+                            duration = duration / 1000f //Tiled gives us these durations in ms, need to convert...
+                        };
+                        animations[tileId].Add(animationTile);
+                    }
+                    else if (reader.NodeType == XmlNodeType.EndElement)
+                        break;
+                }
+            }
+        }
+    }
+
+    public void Update(GameTime gameTime)
+    {
+        foreach (var tile in Tiles)
+        {
+            if (tile is AnimatedTile animationTile)
+                animationTile.Update(gameTime);
         }
     }
 }

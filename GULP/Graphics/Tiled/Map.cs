@@ -114,6 +114,15 @@ public class Map
         return result;
     }
 
+    public void Update(GameTime gameTime)
+    {
+        //TODO I think we can do something smarter here rather than update every single tile regardless of if its being drawn...
+        foreach (var tileset in Tilesets)
+        {
+            tileset.Update(gameTime);
+        }
+    }
+
     public void Draw(SpriteBatch spriteBatch)
     {
         //the size of our map in pixels
@@ -149,17 +158,23 @@ public class Map
                     if (tileNumber == 0)
                         continue;
 
-                    //todo I don't know if this really helps, but I'll keep it for now, it can't hurt
+                    //todo I don't know if this caching really helps, but I'll keep it for now, it can't hurt
+                    Tile tile;
                     if (!_tileCache.TryGetValue(tileNumber, out var value))
                     {
-                        var tile = GetTile(tileNumber);
+                        tile = GetTile(tileNumber);
                         _tileCache[tileNumber] = tile;
-                        tile.Draw(spriteBatch, new Vector2(j, i), k);
                     }
                     else
+                        tile = value;
+
+                    if (tile is AnimatedTile animationTile)
                     {
-                        value?.Draw(spriteBatch, new Vector2(j, i), k);
+                        animationTile.Play(); //maybe eventually we'd want to not autoplay in all scenarios but for now
+                        animationTile.Draw(spriteBatch, new Vector2(j, i), k);
                     }
+                    else
+                        tile.Draw(spriteBatch, new Vector2(j, i), k);
                 }
 
                 //after drawing every layer for this tile, we can draw the next one

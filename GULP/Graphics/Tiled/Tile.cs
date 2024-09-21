@@ -25,7 +25,7 @@ public class Tile
         CollisionBox = collisionBox;
     }
 
-    public void Draw(SpriteBatch spriteBatch, Vector2 position, float layerDepth)
+    public virtual void Draw(SpriteBatch spriteBatch, Vector2 position, float layerDepth)
     {
         //the layerDepth here takes into account the lowest Y axis of the tile (it's bottom), as well as the layerDepth
         //- this means that a tile at layer 1 (the same layer as the player) will be drawn in front of the player if the

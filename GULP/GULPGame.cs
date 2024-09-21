@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
 using GULP.Entities;
 using GULP.Graphics.Tiled;
@@ -14,8 +15,8 @@ public class GULPGame : Game
     //TODO both of these should be changeable in the settings
     //this is the actual resolution that should be set via a picker in the settings
     //allowing the player to choose between 720p, 1080p, 1440p, etc
-    public const int SCREEN_X_RESOLUTION = 1280;
-    public const int SCREEN_Y_RESOLUTION = 720;
+    public const int SCREEN_X_RESOLUTION = 2560;
+    public const int SCREEN_Y_RESOLUTION = 1440;
     //this is the actual window size, regardless of the resolution chosen
     public const int SCREEN_WIDTH = 1920;
     public const int SCREEN_HEIGHT = 1080;
@@ -94,6 +95,11 @@ public class GULPGame : Game
         _inputController.ProcessInputs(gameTime);
         _camera.Update(gameTime);
         _entityManager.Update(gameTime);
+        _map.Update(gameTime);
+        
+        //probably should be in a separate DebugHelper class like the entity collisionbox logic
+        var frameRate = (int)Math.Ceiling(1 / (float)gameTime.ElapsedGameTime.TotalSeconds);
+        Debug.WriteLine("FPS = " + frameRate);
 
         base.Update(gameTime);
     }

@@ -38,7 +38,7 @@ public class SpriteAnimation
     public Sprite CurrentSprite => Sprites[CurrentFrame];
     public float PlaybackProgress { get; set; }
     public bool IsPlaying { get; private set; } = true;
-    public float Duration => _spriteDurations.Sum();
+    public float Duration { get; private set; }
 
     public SpriteAnimation(float defaultDuration = float.NaN, bool shouldLoop = true, bool normalizeHeight = true,
         bool normalizeWidth = false)
@@ -70,6 +70,7 @@ public class SpriteAnimation
         _minWidth = Math.Min(_minWidth, sprite.Width);
         Sprites.Add(sprite);
         _spriteDurations.Add(_defaultDuration);
+        Duration += _defaultDuration;
     }
 
     public void Update(GameTime gameTime)
