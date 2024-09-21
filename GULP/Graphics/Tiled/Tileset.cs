@@ -35,7 +35,7 @@ public class Tileset
         {
             DtdProcessing = DtdProcessing.Parse
         };
-
+        
         Dictionary<int, Rectangle> objects = new();
 
         //scope of the using definiton is automatically defined as end of the current code block
@@ -77,7 +77,7 @@ public class Tileset
                             //load any objects on the tile: collisions, etc
                             var st = reader.ReadSubtree();
                             st.Read();
-                            LoadObjects(st, tileId, objects);
+                            LoadTileInfo(st, tileId, objects); //TODO expand this for animations...
                             break;
                     }
 
@@ -114,7 +114,7 @@ public class Tileset
         return result;
     }
 
-    private static void LoadObjects(XmlReader reader, int tileId, Dictionary<int, Rectangle> objects)
+    private static void LoadTileInfo(XmlReader reader, int tileId, Dictionary<int, Rectangle> objects)
     {
         while (reader.Read())
         {
@@ -122,8 +122,11 @@ public class Tileset
             if (reader.NodeType == XmlNodeType.Element && name == "object")
             {
                 var objectType = reader.GetAttribute("type");
-                //eventually we'll need to handle other object types
-                if (objectType == "Collision")
+
+                if (objectType is null)
+                    throw new ArgumentNullException(nameof(objectType), "Object Type can't be null!");
+                
+                if (objectType.ToLower().Equals("collision"))
                 {
                     var x = int.Parse(reader.GetAttribute("x") ??
                                       throw new InvalidOperationException());
@@ -135,6 +138,10 @@ public class Tileset
                                            throw new InvalidOperationException());
 
                     objects.Add(tileId, new Rectangle(x, y, width, height));
+                }
+                else
+                {
+                    throw new ArgumentException("Can't recognize objectType!", objectType);
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace GULP.Graphics.Tiled;
@@ -30,8 +31,8 @@ public class Tile
         //- this means that a tile at layer 1 (the same layer as the player) will be drawn in front of the player if the
         //  tile is "lower" on the screen -> this allows the the player to go "behind" a fence
         //- anything on layer 2 should be drawn above the player due to layerDepth scalar
-        //- WINDOW_HEIGHT is used to compress the layerDepth value to a smaller scale float
+        //- SCREEN_Y_RESOLUTION is used to compress the layerDepth value to a smaller scale float
         spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White, 0, new Vector2(0, 0), 1,
-            SpriteEffects.None, MathHelper.Clamp((position.Y + Height)/GULPGame.WINDOW_HEIGHT*layerDepth, 0f, 1f));
+            SpriteEffects.None, MathHelper.Clamp((position.Y + Height)/ (GULPGame.SCREEN_Y_RESOLUTION * 16)*layerDepth, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
     }
 }

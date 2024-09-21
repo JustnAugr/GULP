@@ -156,7 +156,8 @@ public class Player : ICreature
         attackRight.AddFrame(new Sprite(_spriteSheet, 107, 358, 20, 21));
         attackRight.AddFrame(new Sprite(_spriteSheet, 161, 360, 15, 19));
 
-        var attackLeft = new SpriteAnimation(ANIM_ATTACK_FRAME_DURATION, shouldLoop: false);
+        //normalize the width so our sprite doesn't move but our attack DOES extend farther to the left
+        var attackLeft = new SpriteAnimation(ANIM_ATTACK_FRAME_DURATION, shouldLoop: false, normalizeWidth: true);
         attackLeft.AddFrame(new Sprite(_spriteSheet, 19, 359, 16, 20, SpriteEffects.FlipHorizontally));
         attackLeft.AddFrame(new Sprite(_spriteSheet, 56, 358, 34, 23, SpriteEffects.FlipHorizontally));
         attackLeft.AddFrame(new Sprite(_spriteSheet, 107, 358, 20, 21, SpriteEffects.FlipHorizontally));
@@ -245,8 +246,6 @@ public class Player : ICreature
         var posX = Position.X + (_velocity / diagonalAdj) * direction.X;
         var posY = Position.Y + (_velocity / diagonalAdj) * direction.Y;
 
-        Debug.WriteLine(posY);
-
         //simple bounding for now to prevent us from going off screen
         var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
         if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
@@ -328,8 +327,8 @@ public class Player : ICreature
         //apply our new position, bounded by the world and by collisions
         //also update our tile->creature position dicts
         var oldPosition = Position;
-        Position = new Vector2(posX, posY);;
-        
+        Position = new Vector2(posX, posY);
+
         if (oldPosition != Position)
         {
             _entityManager.RemoveTileCreaturePosition(this, oldPosition);
@@ -403,7 +402,7 @@ public class Player : ICreature
             boxTexture.SetData(boxData);
             spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
                 Color.White, 0f,
-                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
+                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.SCREEN_Y_RESOLUTION);
         }
 
         var animation = _animColl.GetAnimation(State, AnimDirection);

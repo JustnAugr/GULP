@@ -11,15 +11,19 @@ namespace GULP;
 
 public class GULPGame : Game
 {
+    //TODO both of these should be changeable in the settings
     //this is the actual resolution that should be set via a picker in the settings
     //allowing the player to choose between 720p, 1080p, 1440p, etc
-    public const int WINDOW_WIDTH = 1920;
-    public const int WINDOW_HEIGHT = 1080;
+    public const int SCREEN_X_RESOLUTION = 1280;
+    public const int SCREEN_Y_RESOLUTION = 720;
+    //this is the actual window size, regardless of the resolution chosen
+    public const int SCREEN_WIDTH = 1920;
+    public const int SCREEN_HEIGHT = 1080;
 
     private const string PLAYER_TEXTURE_ASSET_NAME = "Sprites/player";
     private const string SLIME_TEXTURE_ASSET_NAME = "Sprites/slime";
     private const string TILED_PREFIX_ASSET_NAME = "Tiled";
-    private const string MAP_FILE_ASSET_NAME = "map.tmx";
+    private const string MAP_FILE_ASSET_NAME = "map_01.tmx";
 
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
@@ -45,10 +49,8 @@ public class GULPGame : Game
     protected override void Initialize()
     {
         base.Initialize();
-
-        //TODO this should be moved into some settings menu and allow the player to change
-        _graphics.PreferredBackBufferWidth = WINDOW_WIDTH;
-        _graphics.PreferredBackBufferHeight = WINDOW_HEIGHT;
+        _graphics.PreferredBackBufferWidth = SCREEN_WIDTH;
+        _graphics.PreferredBackBufferHeight = SCREEN_HEIGHT;
 
         //_graphics.ToggleFullScreen();
         //_graphics.HardwareModeSwitch = false; //this makes it borderless fullscreen
@@ -67,7 +69,7 @@ public class GULPGame : Game
         _entityManager = new EntityManager(_map);
 
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
-        _player = new Player(_playerTexture, new Vector2(900, 540), _map,
+        _player = new Player(_playerTexture, new Vector2(15 * 16, 15 * 16), _map,
             _entityManager); //todo location from map object (non-collision object)
 
         //TODO should the map and camera be globals? especially considering we're using them for things like draw culling...
@@ -75,7 +77,7 @@ public class GULPGame : Game
         _map.Camera = _camera;
 
         var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
-        var slime = new Slime(slimeTexture, new Vector2(800, 540), _map, _camera);
+        var slime = new Slime(slimeTexture, new Vector2(40, 40), _map, _camera, _entityManager);
 
         _entityManager.AddEntity(slime);
         _entityManager.AddEntity(_player);

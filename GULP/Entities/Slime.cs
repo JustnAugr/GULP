@@ -16,6 +16,7 @@ public class Slime : ICreature
     private readonly Texture2D _spriteSheet;
     private readonly Map _map;
     private readonly Camera _camera;
+    private readonly EntityManager _entityManager;
     private SpriteAnimationColl _animColl;
 
     public bool IsDealingDamage { get; }
@@ -25,12 +26,13 @@ public class Slime : ICreature
     public CreatureState State { get; private set; }
     public SpriteDirection AnimDirection { get; set; }
 
-    public Slime(Texture2D spriteSheet, Vector2 position, Map map, Camera camera)
+    public Slime(Texture2D spriteSheet, Vector2 position, Map map, Camera camera, EntityManager entityManager)
     {
         _spriteSheet = spriteSheet;
         Position = position;
         _map = map;
         _camera = camera;
+        _entityManager = entityManager;
 
         State = CreatureState.Idling;
 
@@ -127,10 +129,10 @@ public class Slime : ICreature
         //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
         //towards the feet on the y-axis
         var COLLISION_BOX_WIDTH = 12;
-        var COLLISION_BOX_HEIGHT = 12;
+        var COLLISION_BOX_HEIGHT = 10;
 
         var rect = new Rectangle((int)Math.Floor(position.X) + sprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
-            (int)Math.Floor(position.Y) - (int)(sprite.Height / 2.5),
+            (int)Math.Floor(position.Y) + (int)(sprite.Height / 2) - COLLISION_BOX_HEIGHT/2,
             COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
 
         return rect;
@@ -158,67 +160,114 @@ public class Slime : ICreature
 
     public bool Walk(Vector2 direction, GameTime gameTime)
     {
-        //TODO... later, let's sort out player first...
+        var newAnimationDirection = GetAnimationDirection(direction);
+        if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
+        {
+            _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
+        }
+        
+        //set new values pertaining to the state of this entity
+        State = CreatureState.Walking;
+        AnimDirection = newAnimationDirection;
+        Direction = direction;
+        
+        //ensure we're playin our animation if we've just changed from another one
+        _animColl.GetAnimation(State, AnimDirection).Play();
+        
+        //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
+        var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
+        
+        //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
+        var posX = Position.X + (WALK_VELOCITY / diagonalAdj) * direction.X;
+        var posY = Position.Y + (WALK_VELOCITY / diagonalAdj) * direction.Y;
+        
+        //simple bounding for now to prevent us from going off screen
+        var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
+        if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
+            posX = Position.X;
+        
+        if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
+            posY = Position.Y;
+        
+        
+        //Collision Checking v2 //TODO pull this out to a new method, a lot of it is shared between creatures as well
+        //these are the tiles we'd be at if we moved in just the Y direction
+        var collisionBoxY = GetCollisionBox(new Vector2(Position.X, posY));
+        var tilesY = _map.GetTiles(collisionBoxY);
+        //these are the collisions we'd meet at those tiles
+        var collisionsY = _map.GetTileCollisions(tilesY);
+
+        foreach (var tile in tilesY)
+        {
+            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            if (creatureListExists && creatureList is { Count: > 0 })
+            {
+                foreach (var creature in creatureList)
+                {
+                    if (creature != this)
+                        collisionsY.Add(creature.GetCollisionBox());
+                }
+            }
+        }
+
+        foreach (var collision in collisionsY)
+        {
+            //we're only applying the Y movement, so just check the Y direction
+            if (direction.Y != 0)
+            {
+                if (collision.Intersects(collisionBoxY))
+                {
+                    direction.Y = 0;
+                    posY =
+                        Position.Y + WALK_VELOCITY / diagonalAdj * direction.Y; //some friction constant
+                }
+            }
+        }
+
+        //these are the tiles we'd be at if we moved in just the Y direction
+        var collisionBoxX = GetCollisionBox(new Vector2(posX, Position.Y));
+        var tilesX = _map.GetTiles(collisionBoxX);
+        //these are the collisions we'd meet at those tiles
+        var collisionsX = _map.GetTileCollisions(tilesX);
+
+        foreach (var tile in tilesX)
+        {
+            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            if (creatureListExists && creatureList is { Count: > 0 })
+            {
+                foreach (var creature in creatureList)
+                {
+                    if (creature != this)
+                        collisionsX.Add(creature.GetCollisionBox());
+                }
+            }
+        }
+
+        foreach (var collision in collisionsX)
+        {
+            //we're only applying the Y movement, so just check the Y direction
+            if (direction.X != 0)
+            {
+                if (collision.Intersects(collisionBoxX))
+                {
+                    direction.X = 0;
+                    posX = Position.X + WALK_VELOCITY / diagonalAdj * direction.X;
+                }
+            }
+        }
+
+        //apply our new position, bounded by the world and by collisions
+        //also update our tile->creature position dicts
+        var oldPosition = Position;
+        Position = new Vector2(posX, posY);
+
+        if (oldPosition != Position)
+        {
+            _entityManager.RemoveTileCreaturePosition(this, oldPosition);
+            _entityManager.AddTileCreaturePosition(this, Position);
+        }
+        
         return true;
-        // //if we weren't walking previously, or the animation direction was different then reset the playback before
-        // //we change animations, so that if we later resume this animation it'll start from the beginning
-        // var newAnimationDirection = GetAnimationDirection(direction);
-        // if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
-        // {
-        //     _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-        // }
-        //
-        // //set new values pertaining to the state of this entity
-        // State = CreatureState.Walking;
-        // AnimDirection = newAnimationDirection;
-        // Direction = direction;
-        //
-        // //ensure we're playin our animation if we've just changed from another one
-        // _animColl.GetAnimation(State, AnimDirection).Play();
-        //
-        // //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
-        // var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
-        //
-        // //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
-        // var posX = Position.X + (WALK_VELOCITY / diagonalAdj) * direction.X;
-        // var posY = Position.Y + (WALK_VELOCITY / diagonalAdj) * direction.Y;
-        //
-        // //simple bounding for now to prevent us from going off screen
-        // var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
-        // if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
-        //     posX = Position.X;
-        //
-        // if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
-        //     posY = Position.Y;
-        //
-        // //Collision checking
-        // //we break up the X and Y collision checking so that we can apply them independently, for example
-        // //if our player is up against a wall and trying to go diagonal -> we'd apply a sliding effect along the wall
-        // var collisionDiffTol = 1e-4f;
-        //
-        // //check Y first: get the collisionBox if we accept the new Y, and then check using JUST the Y direction
-        // var directionPostCollision =
-        //     _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(Position.X, posY)), new Vector2(0, direction.Y),
-        //         1);
-        // if (Math.Abs(direction.Y - directionPostCollision.Y) > collisionDiffTol)
-        // {
-        //     posY =
-        //         Position.Y + WALK_VELOCITY / diagonalAdj * directionPostCollision.Y; //some friction constant
-        // }
-        //
-        // //now check X: get the collision box if we accept the new X, then check using JUST the X direction
-        // directionPostCollision =
-        //     _map.AdjustDirectionCollisions(GetCollisionBox(new Vector2(posX, Position.Y)), new Vector2(direction.X, 0),
-        //         1);
-        // if (Math.Abs(direction.X - directionPostCollision.X) > collisionDiffTol)
-        // {
-        //     posX = Position.X + WALK_VELOCITY / diagonalAdj * directionPostCollision.X;
-        // }
-        //
-        // //apply our new position, bounded by the world and by collisions
-        // NextPosition = new Vector2(posX, posY);
-        //
-        // return true;
     }
 
     public void Idle()
@@ -275,7 +324,7 @@ public class Slime : ICreature
             boxTexture.SetData(boxData);
             spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
                 Color.White, 0f,
-                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.WINDOW_HEIGHT);
+                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.SCREEN_Y_RESOLUTION);
         }
         
         var animation = _animColl.GetAnimation(State, AnimDirection);

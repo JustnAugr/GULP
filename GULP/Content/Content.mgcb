@@ -37,10 +37,7 @@
 /processorParam:TextureFormat=Color
 /build:Sprites/slime.png
 
-#begin Tiled/fences.tsx
-/copy:Tiled/fences.tsx
-
-#begin Tiled/fencesTexture.png
+#begin Tiled/chest_01.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -50,12 +47,69 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Tiled/fencesTexture.png
+/build:Tiled/chest_01.png
+
+#begin Tiled/chest_02.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Tiled/chest_02.png
+
+#begin Tiled/decor_16x16.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Tiled/decor_16x16.png
+
+#begin Tiled/decor_16x16.tsx
+/copy:Tiled/decor_16x16.tsx
+
+#begin Tiled/fences.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Tiled/fences.png
+
+#begin Tiled/fences.tsx
+/copy:Tiled/fences.tsx
+
+#begin Tiled/grass.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Tiled/grass.png
 
 #begin Tiled/grass.tsx
 /copy:Tiled/grass.tsx
 
-#begin Tiled/grassTexture.png
+#begin Tiled/map_01.tmx
+/copy:Tiled/map_01.tmx
+
+#begin Tiled/objects.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -65,12 +119,12 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Tiled/grassTexture.png
+/build:Tiled/objects.png
 
-#begin Tiled/ground1.tsx
-/copy:Tiled/ground1.tsx
+#begin Tiled/objects.tsx
+/copy:Tiled/objects.tsx
 
-#begin Tiled/ground1Texture.png
+#begin Tiled/plains.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -80,12 +134,12 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Tiled/ground1Texture.png
+/build:Tiled/plains.png
 
-#begin Tiled/ground2.tsx
-/copy:Tiled/ground2.tsx
+#begin Tiled/plains.tsx
+/copy:Tiled/plains.tsx
 
-#begin Tiled/ground2Texture.png
+#begin Tiled/water_decorations.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -95,8 +149,23 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Tiled/ground2Texture.png
+/build:Tiled/water_decorations.png
 
-#begin Tiled/map.tmx
-/copy:Tiled/map.tmx
+#begin Tiled/water_decorations.tsx
+/copy:Tiled/water_decorations.tsx
+
+#begin Tiled/water-sheet.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Tiled/water-sheet.png
+
+#begin Tiled/water-sheet.tsx
+/copy:Tiled/water-sheet.tsx
 

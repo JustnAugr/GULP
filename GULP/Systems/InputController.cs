@@ -7,7 +7,7 @@ namespace GULP.Systems;
 
 public class InputController
 {
-    private const float CAMERA_ZOOM_STEP = .5f;
+    private const int CAMERA_ZOOM_STEP = 1;
 
     private readonly Player _player;
     private readonly Camera _camera;

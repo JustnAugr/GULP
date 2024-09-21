@@ -16,6 +16,8 @@ public class Map
     public readonly List<Tileset> Tilesets = new();
     public readonly List<Layer> Layers = new();
 
+    private readonly Dictionary<int, Tile> _tileCache = new();
+
     public int Width { get; private set; } //in tiles
     public int Height { get; private set; } //in tiles
     public int TileWidth { get; private set; }
@@ -86,7 +88,14 @@ public class Map
                             var layer = Layer.Load(subtreeReader, id, layerName, width, height);
                             result.Layers
                                 .Add(layer);
-                            result.Layers.Sort((layer1, layer2) => layer1.Id.CompareTo(layer2.Id));
+
+                            //don't sort for now, instead rely on file order which is more consistent I find
+                            //result.Layers.Sort((layer1, layer2) => layer1.Id.CompareTo(layer2.Id));
+                        }
+                            break;
+                        case "objectgroup":
+                        {
+                            //TODO write objectGroup layer loading: will be used for spawn locations
                         }
                             break;
                     }
@@ -112,7 +121,7 @@ public class Map
         var width = Width * TileWidth;
         var iStart = 0;
         var jStart = 0;
-        
+
         //alter our start and end loop values if the camera is available, because we can easily cull a lot of the tiles
         //if our camera is showing a smaller area than the ENTIRE map
         if (Camera != null)
@@ -124,7 +133,6 @@ public class Map
             width = Math.Min((int)Math.Floor(Camera.Right) / TileWidth * TileWidth + TileWidth, width);
         }
 
-        var tileIndex = 0;
         //draw our map one tile at a time, layer by layer, then row by row
         //so we draw layer 1->4 at tile 1, then layer 1->4 at tile 2 etc
         for (var i = iStart; i < height; i += TileHeight)
@@ -132,7 +140,7 @@ public class Map
             for (var j = jStart; j < width; j += TileWidth)
             {
                 //this should already be sorted
-                for (int k = 0; k < Layers.Count; k++)
+                for (var k = 0; k < Layers.Count; k++)
                 {
                     //TODO move this math into a separate method given we do it in a couple of spots
                     var tileNumber = Layers[k].LayerData[j / TileHeight + i / TileWidth * Width];
@@ -141,12 +149,20 @@ public class Map
                     if (tileNumber == 0)
                         continue;
 
-                    var tile = GetTile(tileNumber);
-                    tile.Draw(spriteBatch, new Vector2(j, i), k);
+                    //todo I don't know if this really helps, but I'll keep it for now, it can't hurt
+                    if (!_tileCache.TryGetValue(tileNumber, out var value))
+                    {
+                        var tile = GetTile(tileNumber);
+                        _tileCache[tileNumber] = tile;
+                        tile.Draw(spriteBatch, new Vector2(j, i), k);
+                    }
+                    else
+                    {
+                        value?.Draw(spriteBatch, new Vector2(j, i), k);
+                    }
                 }
 
                 //after drawing every layer for this tile, we can draw the next one
-                tileIndex++;
             }
         }
     }
@@ -172,13 +188,12 @@ public class Map
 
         return tileset.Tiles[tileNumber - tileset.Firstgid]; //offset it by the firstgid as tileNumber is absolute
     }
-    
+
     /// <summary>Get Tiles that an entity is currently colliding with/standing on</summary>
     /// <param name="rectangle">Entity rectangle collisionbox</param>
-    /// <param name="layer">map layer</param>
     /// <returns>returns set of Vector2 coords representing position of tile on an X Y map grid. Multiply by
     /// TileWidth and TileHeight to get actual world position of tile's top left corner</returns>
-    public HashSet<Vector2> GetTiles(Rectangle rectangle, int layer = 0)
+    public HashSet<Vector2> GetTiles(Rectangle rectangle)
     {
         HashSet<Vector2> tiles = new();
 
@@ -210,7 +225,7 @@ public class Map
     /// <param name="tilePositions">Set of tile positions in map grid space</param>
     /// <param name="layer">Map layer</param>
     /// <returns>Returns tile collision rectangles in world space to check against entity collision boxes</returns>
-    public HashSet<Rectangle> GetTileCollisions(HashSet<Vector2> tilePositions, int layer = 1)
+    public HashSet<Rectangle> GetTileCollisions(HashSet<Vector2> tilePositions)
     {
         //the input here is a set of Tiles defined as their x,y coordinates on the grid
         //where 0,0 represents the tilewidth*tileheight sized tile in the top left corner
@@ -220,24 +235,29 @@ public class Map
         foreach (var tilePos in tilePositions)
         {
             var tileIndex = (int)Math.Floor(tilePos.X) + (int)Math.Floor(tilePos.Y) * Width;
-            //the number of that tile in our raw csv
-            var tileNumber = Layers[layer].LayerData[tileIndex];
 
-            //0 meaning it was an empty air tile
-            var tile = tileNumber == 0 ? null : GetTile(tileNumber);
+            //get collisions on ALL layers
+            foreach (var layer in Layers)
+            {
+                //the number of that tile in our raw csv
+                var tileNumber = layer.LayerData[tileIndex];
 
-            //if the tile is null or it doesn't contain a valid collisionbox...
-            if (tile == null || tile.CollisionBox.IsEmpty)
-                continue;
+                //0 meaning it was an empty air tile
+                var tile = tileNumber == 0 ? null : GetTile(tileNumber);
 
-            //we take the top left of the tile (which should be our tilePos),
-            //and apply the collisionbox info to get a world position rectangle of the collision
-            //this is because the tile object itself doesn't have it's world position, that's handled by the Map.Draw()
-            var adjTileCollisionRect = new Rectangle((int)Math.Floor(tilePos.X) * TileWidth + tile.CollisionBox.X,
-                (int)Math.Floor(tilePos.Y) * TileHeight + tile.CollisionBox.Y,
-                tile.CollisionBox.Width, tile.CollisionBox.Height);
+                //if the tile is null or it doesn't contain a valid collisionbox...
+                if (tile == null || tile.CollisionBox.IsEmpty)
+                    continue;
 
-            rectangles.Add(adjTileCollisionRect);
+                //we take the top left of the tile (which should be our tilePos),
+                //and apply the collisionbox info to get a world position rectangle of the collision
+                //this is because the tile object itself doesn't have it's world position, that's handled by the Map.Draw()
+                var adjTileCollisionRect = new Rectangle((int)Math.Floor(tilePos.X) * TileWidth + tile.CollisionBox.X,
+                    (int)Math.Floor(tilePos.Y) * TileHeight + tile.CollisionBox.Y,
+                    tile.CollisionBox.Width, tile.CollisionBox.Height);
+
+                rectangles.Add(adjTileCollisionRect);
+            }
         }
 
         return rectangles;
