@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using GULP.Graphics.Sprites;
@@ -10,6 +11,7 @@ namespace GULP.Entities;
 
 public class Player : ICreature
 {
+    //movement constants
     private const float ACCELERATION = 1.0f;
     private const float MAX_VELOCITY = 3.0f;
     private const float INITIAL_VELOCITY = 1.0f;
@@ -19,20 +21,22 @@ public class Player : ICreature
     private const float ANIM_WALK_FRAME_DURATION = 1 / 15f;
     private const float ANIM_ATTACK_FRAME_DURATION = 1 / 10f;
 
-    private const float DAMAGE_DEALING_FRAME = 1;
+    //collision and attack box sizes
     private const int COLLISION_BOX_WIDTH = 15;
     private const int COLLISION_BOX_HEIGHT = 9;
+    private const int VERTICAL_ATTACK_BOX_WIDTH = 22;
+    private const int VERTICAL_ATTACK_BOX_HEIGHT = 10;
+    private const int HORIZONTAL_ATTACK_BOX_WIDTH = 15;
+    private const int HORIZONTAL_ATTACK_BOX_HEIGHT = 18;
 
     private readonly Map _map;
     private readonly EntityManager _entityManager;
     private readonly Texture2D _spriteSheet;
     private SpriteAnimationColl _animColl;
     private float _velocity;
-    private Texture2D CollisionBoxTexture;
-
-    public bool IsDealingDamage => IsAttacking &&
-                                   Math.Abs(_animColl.GetAnimation(State, AnimDirection).CurrentFrame -
-                                            DAMAGE_DEALING_FRAME) < 0.01;
+    private Texture2D _collisionBoxTexture;
+    private Texture2D _verticalAttackBoxTexture;
+    private Texture2D _horizontalAttackBoxTexture;
 
     public bool IsAttacking => //attacking is going to be a "heavy" action, we can't cancel it
         State == CreatureState.Attacking && _animColl.GetAnimation(State, AnimDirection).IsPlaying;
@@ -54,6 +58,8 @@ public class Player : ICreature
         Position = position;
         Health = 100;
         State = CreatureState.Idling;
+        Direction = new Vector2(0, 1); //we start looking down
+        SetAnimationDirection(Direction); //see above
 
         //initialize our animations and store them in a double keyed collection for easy lookup
         _animColl = new SpriteAnimationColl();
@@ -61,22 +67,49 @@ public class Player : ICreature
         InitializeWalkAnimations();
         InitializeAttackAnimations();
 
-        CreateCollisionBoxTexture();
+        //Debug Rectangles
+        CreateDebugRects();
     }
 
-    private void CreateCollisionBoxTexture()
+    private void CreateDebugRects()
     {
-        var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
-        var boxData = new Color[COLLISION_BOX_WIDTH * COLLISION_BOX_HEIGHT];
+        //create a rectangle representing the collisionBox
+        var cBoxText = new Texture2D(_spriteSheet.GraphicsDevice, COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+        var cBoxData = new Color[COLLISION_BOX_WIDTH * COLLISION_BOX_HEIGHT];
 
-        for (int i = 0; i < boxData.Length; i++)
+        for (int i = 0; i < cBoxData.Length; i++)
         {
-            boxData[i] = Color.Cyan;
+            cBoxData[i] = Color.Cyan;
         }
 
-        boxTexture.SetData(boxData);
+        cBoxText.SetData(cBoxData);
+        _collisionBoxTexture = cBoxText;
+        
+        //and a rectangle for the vertical attack box
+        var vABoxText = new Texture2D(_spriteSheet.GraphicsDevice, VERTICAL_ATTACK_BOX_WIDTH,
+            VERTICAL_ATTACK_BOX_HEIGHT);
+        var vABoxData = new Color[VERTICAL_ATTACK_BOX_WIDTH * VERTICAL_ATTACK_BOX_HEIGHT];
 
-        CollisionBoxTexture = boxTexture;
+        for (int i = 0; i < vABoxData.Length; i++)
+        {
+            vABoxData[i] = Color.Red;
+        }
+
+        vABoxText.SetData(vABoxData);
+        _verticalAttackBoxTexture = vABoxText;
+
+        //and the horizontal attack box
+        var hABoxText = new Texture2D(_spriteSheet.GraphicsDevice, HORIZONTAL_ATTACK_BOX_WIDTH,
+            HORIZONTAL_ATTACK_BOX_HEIGHT);
+        var hABoxData = new Color[HORIZONTAL_ATTACK_BOX_WIDTH * HORIZONTAL_ATTACK_BOX_HEIGHT];
+
+        for (int i = 0; i < hABoxData.Length; i++)
+        {
+            hABoxData[i] = Color.Red;
+        }
+
+        hABoxText.SetData(hABoxData);
+        _horizontalAttackBoxTexture = hABoxText;
     }
 
     private void InitializeIdleAnimations()
@@ -239,8 +272,10 @@ public class Player : ICreature
         }
         else
         {
+            //when attacking, our collisionBox uses the first frame for reference as the attackBox is built from this 
+            //collisionBox, and hence when we apply damage will also be applied from a reference of this first frame
             var currentAnimation = _animColl.GetAnimation(State, AnimDirection);
-            var currentSprite = currentAnimation.CurrentSprite;
+            var currentSprite = currentAnimation.Sprites[0];
 
             //we'll need to adjust some of the positions to correspond with how we're modifying the draw calls
             var posX = position.X;
@@ -264,6 +299,51 @@ public class Player : ICreature
         }
 
         return collisionBox;
+    }
+
+    public Rectangle GetAttackBox()
+    {
+        return GetAttackBox(Position);
+    }
+
+    public Rectangle GetAttackBox(Vector2 position)
+    {
+        //A box representing the area of our sword swing when attacking, variable in size depending on if we're 
+        //facing up/down or left/right
+        
+        //offset it from the collisionbox, as we consider this the "core" area of our Player that the sword will emit from
+        //the collision box for attacking uses the first frame as reference, so our attackbox is based on that first frame
+        var collisionBox = GetCollisionBox(position);
+        float posX = collisionBox.X;
+        float posY = collisionBox.Y;
+
+        //our AnimationDirection is going to either be to the left or to the right
+        //so we offset the attackbox from this width
+        if (Direction.X != 0)
+        {
+            //make sure we're properly drawing to the left or right of our player collisionBox
+            var widthOffset = (int)Math.Floor(Direction.X) == 1 ? collisionBox.Width : HORIZONTAL_ATTACK_BOX_WIDTH;
+            //not entirely outside of the collisionBox, bc we don't want to give him a CRAZY far out swing range
+            posX += (int)Math.Floor(widthOffset * Direction.X);
+            //draw around center of collisionBox, then slowly focused more downward as we have a downward arc
+            posY = posY + collisionBox.Height / 1.25f - HORIZONTAL_ATTACK_BOX_HEIGHT / 2f;
+        }
+        else if (Direction.Y != 0) //our AnimationDirection is going to be up or down, offset attackbox from this height
+        {
+            //similar to above, but we keep it in the middle
+            var heightOffset = (int)Math.Floor(Direction.Y) == 1 ? collisionBox.Height : VERTICAL_ATTACK_BOX_HEIGHT;
+            posX = posX + collisionBox.Width / 2f - VERTICAL_ATTACK_BOX_WIDTH / 2f;
+            posY += (int)Math.Floor(heightOffset * Direction.Y);
+        }
+
+        var attackBox = new Rectangle(
+            (int)Math.Floor(posX),
+            (int)Math.Floor(posY),
+            Direction.X != 0 ? HORIZONTAL_ATTACK_BOX_WIDTH : VERTICAL_ATTACK_BOX_WIDTH,
+            Direction.X != 0 ? HORIZONTAL_ATTACK_BOX_HEIGHT : VERTICAL_ATTACK_BOX_HEIGHT
+        );
+
+        return attackBox;
     }
 
     public bool Walk(Vector2 direction, GameTime gameTime)
@@ -300,7 +380,7 @@ public class Player : ICreature
         if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
 
-        //Collision Checking v2 //TODO pull this out to a new method, a lot of it is shared between creatures as well
+        //Collision Checking v2
         //these are the tiles we'd be at if we moved in just the Y direction
         var collisionBoxY = GetCollisionBox(new Vector2(Position.X, posY));
         var tilesY = _map.GetTiles(collisionBoxY);
@@ -395,11 +475,44 @@ public class Player : ICreature
 
     public bool Attack(GameTime gameTime)
     {
+        var previousState = State;
         State = CreatureState.Attacking;
 
         //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
         var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Play();
+
+        //if we are in the process of a new attack, check if we've hit anything
+        //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
+        if (previousState != CreatureState.Attacking)
+        {
+            //the play here matches what we did for collisions more or less:
+            //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
+            //get all entities at those tiles, check if our attackBox intersects their collisionBox
+            //if it does, we consider it a hit on that creature
+            var attackBox = GetAttackBox();
+            var tiles = _map.GetTiles(attackBox);
+
+            //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
+            //TODO this takes twice as long technically so let's revisit this later
+            var creatureSet = new HashSet<ICreature>();
+
+            foreach (var tile in tiles)
+            {
+                var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+                if (!creatureListExists || creatureList is not { Count: > 0 })
+                    continue;
+                //not the player and intersecthing? you're gonna get hit!
+                foreach (var creature in creatureList)
+                    if (creature is not Player && creature.GetCollisionBox().Intersects(attackBox))
+                        creatureSet.Add(creature);
+            }
+
+            foreach (var creature in creatureSet)
+            {
+                Debug.WriteLine("HIT! on: " + creature.GetType());
+            }
+        }
 
         return true;
     }
@@ -439,13 +552,24 @@ public class Player : ICreature
     {
         //This will get moved into some DebugHelper or something, it allows me to see the player's actual collisionbox
         //drawn on top of the sprite
-        if (false)
+        if (true)
         {
-            var rect = GetCollisionBox();
-            spriteBatch.Draw(CollisionBoxTexture, new Vector2(rect.X, rect.Y),
-                new Rectangle(0, 0, rect.Width, rect.Height),
-                Color.White, 0f,
-                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.SCREEN_Y_RESOLUTION);
+            var collisionBox = GetCollisionBox();
+            spriteBatch.Draw(_collisionBoxTexture, new Vector2(collisionBox.X, collisionBox.Y),
+                new Rectangle(0, 0, collisionBox.Width, collisionBox.Height),
+                Color.White * .5f, 0f,
+                Vector2.Zero, 1, SpriteEffects.None, 1f);
+
+            //only draw this if we're attacking
+            if (IsAttacking)
+            {
+                var attackBox = GetAttackBox();
+                spriteBatch.Draw(Direction.X != 0 ? _horizontalAttackBoxTexture : _verticalAttackBoxTexture,
+                    new Vector2(attackBox.X, attackBox.Y),
+                    new Rectangle(0, 0, attackBox.Width, attackBox.Height),
+                    Color.White * .5f, 0f,
+                    Vector2.Zero, 1, SpriteEffects.None, 1f);
+            }
         }
 
         var animation = _animColl.GetAnimation(State, AnimDirection);

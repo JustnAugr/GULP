@@ -158,7 +158,7 @@ public class Map
                     if (tileNumber == 0)
                         continue;
 
-                    //todo I don't know if this caching really helps, but I'll keep it for now, it can't hurt
+                    //I don't know if this caching really helps, but I'll keep it for now, it can't hurt
                     Tile tile;
                     if (!_tileCache.TryGetValue(tileNumber, out var value))
                     {

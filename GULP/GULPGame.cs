@@ -71,7 +71,7 @@ public class GULPGame : Game
 
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
         _player = new Player(_playerTexture, new Vector2(15 * 16, 15 * 16), _map,
-            _entityManager); //todo location from map object (non-collision object)
+            _entityManager); //TODO spwan location from object layer
 
         //TODO should the map and camera be globals? especially considering we're using them for things like draw culling...
         _camera = new Camera(_player, GraphicsDevice, _map);
@@ -99,7 +99,7 @@ public class GULPGame : Game
         
         //probably should be in a separate DebugHelper class like the entity collisionbox logic
         var frameRate = (int)Math.Ceiling(1 / (float)gameTime.ElapsedGameTime.TotalSeconds);
-        Debug.WriteLine("FPS = " + frameRate);
+        //Debug.WriteLine("FPS = " + frameRate);
 
         base.Update(gameTime);
     }

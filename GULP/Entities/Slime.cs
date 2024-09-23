@@ -12,12 +12,15 @@ namespace GULP.Entities;
 public class Slime : ICreature
 {
     private const float WALK_VELOCITY = 2.0f;
+    private const int COLLISION_BOX_WIDTH = 12;
+    private const int COLLISION_BOX_HEIGHT = 10;
 
     private readonly Texture2D _spriteSheet;
     private readonly Map _map;
     private readonly Camera _camera;
     private readonly EntityManager _entityManager;
     private SpriteAnimationColl _animColl;
+    private Texture2D _collisionBoxTexture;
 
     public bool IsDealingDamage { get; }
     public Vector2 Position { get; set; }
@@ -39,6 +42,23 @@ public class Slime : ICreature
         _animColl = new SpriteAnimationColl();
         InitializeIdleAnimations();
         InitializeWalkAnimation();
+        
+        //Debugging Texture
+        CreateDebugTextures();
+    }
+
+    private void CreateDebugTextures()
+    {
+        var cBoxText = new Texture2D(_spriteSheet.GraphicsDevice, COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+        var cBoxData = new Color[COLLISION_BOX_WIDTH * COLLISION_BOX_HEIGHT];
+
+        for (int i = 0; i < cBoxData.Length; i++)
+        {
+            cBoxData[i] = Color.Cyan;
+        }
+
+        cBoxText.SetData(cBoxData);
+        _collisionBoxTexture = cBoxText;
     }
 
     private void InitializeIdleAnimations()
@@ -128,9 +148,6 @@ public class Slime : ICreature
 
         //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
         //towards the feet on the y-axis
-        var COLLISION_BOX_WIDTH = 12;
-        var COLLISION_BOX_HEIGHT = 10;
-
         var rect = new Rectangle((int)Math.Floor(position.X) + sprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
             (int)Math.Floor(position.Y) + (int)(sprite.Height / 2) - COLLISION_BOX_HEIGHT/2,
             COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
@@ -140,7 +157,7 @@ public class Slime : ICreature
 
     private SpriteDirection GetAnimationDirection(Vector2 direction)
     {
-        //TODO shared between player, move it
+        //TODO maybe best moved into the enum class itself, with a to and from Vector2 direction
         var x = direction.X;
         var y = direction.Y;
 
@@ -190,7 +207,7 @@ public class Slime : ICreature
             posY = Position.Y;
         
         
-        //Collision Checking v2 //TODO pull this out to a new method, a lot of it is shared between creatures as well
+        //Collision Checking v2
         //these are the tiles we'd be at if we moved in just the Y direction
         var collisionBoxY = GetCollisionBox(new Vector2(Position.X, posY));
         var tilesY = _map.GetTiles(collisionBoxY);
@@ -275,7 +292,7 @@ public class Slime : ICreature
         if (State != CreatureState.Idling)
             _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
 
-        //todo add to iface
+        //todo add to iface/abstract Creature class
         State = CreatureState.Idling;
         _animColl.GetAnimation(State, AnimDirection).Play();
     }
@@ -303,28 +320,18 @@ public class Slime : ICreature
 
     public void Draw(SpriteBatch spriteBatch)
     {
-        //TODO make this into a more general function, as it's the draw culling method
+        //TODO move draw culling into the Sprite Draw method
         if (Position.X + 30 < _camera.Left || Position.X > _camera.Right || Position.Y + 30 < _camera.Top ||
             Position.Y > _camera.Bottom)
             return;
         
-        if (false)
+        if (true)
         {
-            //todo why is this so fucking intensive????? lags like crazy
-            var rect = GetCollisionBox();
-
-            var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
-            var boxData = new Color[rect.Width * rect.Height];
-
-            for (int i = 0; i < boxData.Length; i++)
-            {
-                boxData[i] = Color.Yellow;
-            }
-
-            boxTexture.SetData(boxData);
-            spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
-                Color.White, 0f,
-                Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.SCREEN_Y_RESOLUTION);
+            var collisionBox = GetCollisionBox();
+            spriteBatch.Draw(_collisionBoxTexture, new Vector2(collisionBox.X, collisionBox.Y),
+                new Rectangle(0, 0, collisionBox.Width, collisionBox.Height),
+                Color.White * .5f, 0f,
+                Vector2.Zero, 1, SpriteEffects.None, 1f);
         }
         
         var animation = _animColl.GetAnimation(State, AnimDirection);

@@ -84,7 +84,7 @@ public class Tileset
                             //load any objects on the tile: collisions, etc
                             var st = reader.ReadSubtree();
                             st.Read();
-                            LoadTileInfo(st, tileId, objects, animations); //TODO expand this for animations...
+                            LoadTileInfo(st, tileId, objects, animations);
                             break;
                     }
 
