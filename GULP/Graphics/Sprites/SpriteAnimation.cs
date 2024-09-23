@@ -11,12 +11,14 @@ public class SpriteAnimation
     private readonly float _defaultDuration;
     private readonly bool _shouldLoop;
     private readonly List<float> _spriteDurations = new();
-    private float _minHeight = float.MaxValue;
-    private float _minWidth = float.MaxValue;
 
     public readonly List<Sprite> Sprites = new();
     private bool NormalizeWidth { get; }
     private bool NormalizeHeight { get; }
+
+    public float MinWidth { get; private set; } = float.MaxValue;
+
+    public float MinHeight { get; private set; } = float.MaxValue;
 
     public int CurrentFrame
     {
@@ -66,8 +68,8 @@ public class SpriteAnimation
             throw new ArgumentException(
                 "Must specify a default SpriteAnimation duration if not passing a duration for this frame!");
 
-        _minHeight = Math.Min(_minHeight, sprite.Height);
-        _minWidth = Math.Min(_minWidth, sprite.Width);
+        MinHeight = Math.Min(MinHeight, sprite.Height);
+        MinWidth = Math.Min(MinWidth, sprite.Width);
         Sprites.Add(sprite);
         _spriteDurations.Add(_defaultDuration);
         Duration += _defaultDuration;
@@ -100,11 +102,11 @@ public class SpriteAnimation
 
             //we're normalizing to the smallest sprite to handle cases where were the walking animation involves a bit of an upward bob
             //we apply that upward, not downward so that the down position is the same as our idle position
-            if (NormalizeHeight && currentSprite.Height > _minHeight)
-                position = new Vector2(position.X, position.Y - (currentSprite.Height - _minHeight));
+            if (NormalizeHeight && currentSprite.Height > MinHeight)
+                position = new Vector2(position.X, position.Y - (currentSprite.Height - MinHeight));
             //we also allow for optionally normalizing the width! this is especially important for cases where we've flipped the sprite horizontally
-            if (NormalizeWidth && currentSprite.Width > _minWidth)
-                position = new Vector2(position.X - (currentSprite.Width - _minWidth), position.Y);
+            if (NormalizeWidth && currentSprite.Width > MinWidth)
+                position = new Vector2(position.X - (currentSprite.Width - MinWidth), position.Y);
         }
 
         Sprites[currentFrame]?.Draw(spriteBatch, position);

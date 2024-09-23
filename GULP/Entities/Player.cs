@@ -27,8 +27,8 @@ public class Player : ICreature
     private readonly EntityManager _entityManager;
     private readonly Texture2D _spriteSheet;
     private SpriteAnimationColl _animColl;
-
     private float _velocity;
+    private Texture2D CollisionBoxTexture;
 
     public bool IsDealingDamage => IsAttacking &&
                                    Math.Abs(_animColl.GetAnimation(State, AnimDirection).CurrentFrame -
@@ -60,6 +60,23 @@ public class Player : ICreature
         InitializeIdleAnimations();
         InitializeWalkAnimations();
         InitializeAttackAnimations();
+
+        CreateCollisionBoxTexture();
+    }
+
+    private void CreateCollisionBoxTexture()
+    {
+        var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+        var boxData = new Color[COLLISION_BOX_WIDTH * COLLISION_BOX_HEIGHT];
+
+        for (int i = 0; i < boxData.Length; i++)
+        {
+            boxData[i] = Color.Cyan;
+        }
+
+        boxTexture.SetData(boxData);
+
+        CollisionBoxTexture = boxTexture;
     }
 
     private void InitializeIdleAnimations()
@@ -199,25 +216,54 @@ public class Player : ICreature
 
     public Rectangle GetCollisionBox(Vector2 position)
     {
-        //get our max height and width sprites for the current animation
-        var maxHSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Height);
-        var maxWSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Width);
-
-        //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
-        //towards the feet on the y-axis
-        var rect = new Rectangle((int)Math.Floor(position.X) + maxWSprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
-            (int)Math.Floor(position.Y) + (maxHSprite.Height / 2) - (int)(COLLISION_BOX_HEIGHT / 2.5),
-            COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
-
-        //there can be cases where jamming yourself into a box on the X axis and then trying to move on the Y
-        //will cause the player to get stuck bc the collisionBox shifts as the animation does from left/right to up/down
-        //handle that by deflating by a pixel to allow us to get out of it
-        if (Direction.X == 0 && Direction.Y != 0 && State is CreatureState.Walking)
+        Rectangle collisionBox;
+        if (State is not CreatureState.Attacking)
         {
-            rect.Inflate(-1, 0);
+            //get our max height and width sprites for the current animation
+            var maxHSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Height);
+            var maxWSprite = _animColl.GetAnimation(State, AnimDirection).Sprites.MaxBy(s => s.Width);
+
+            //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
+            //towards the feet on the y-axis
+            collisionBox = new Rectangle((int)Math.Floor(position.X) + maxWSprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
+                (int)Math.Floor(position.Y) + (maxHSprite.Height / 2) - (int)(COLLISION_BOX_HEIGHT / 2.5),
+                COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+
+            //there can be cases where jamming yourself into a box on the X axis and then trying to move on the Y
+            //will cause the player to get stuck bc the collisionBox shifts as the animation does from left/right to up/down
+            //handle that by deflating by a pixel to allow us to get out of it
+            if (Direction.X == 0 && Direction.Y != 0 && State is CreatureState.Walking)
+            {
+                collisionBox.Inflate(-1, 0);
+            }
+        }
+        else
+        {
+            var currentAnimation = _animColl.GetAnimation(State, AnimDirection);
+            var currentSprite = currentAnimation.CurrentSprite;
+
+            //we'll need to adjust some of the positions to correspond with how we're modifying the draw calls
+            var posX = position.X;
+            var posY = position.Y;
+
+            //the attack left animation is flipped horizontally,
+            //and then gets its X position adjusted to position.X - (currentSprite.Width - _minWidth)
+            if (AnimDirection is SpriteDirection.Left)
+            {
+                posX -= (currentSprite.Width - currentAnimation.MinWidth);
+            }
+            else if (AnimDirection is SpriteDirection.Down)
+            {
+                posY -= (currentSprite.Height - currentAnimation.MinHeight);
+            }
+
+            collisionBox = new Rectangle(
+                (int)Math.Floor(posX) + currentSprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
+                (int)Math.Floor(posY) + currentSprite.Height / 2 - COLLISION_BOX_HEIGHT / 2,
+                COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
         }
 
-        return rect;
+        return collisionBox;
     }
 
     public bool Walk(Vector2 direction, GameTime gameTime)
@@ -347,17 +393,23 @@ public class Player : ICreature
         State = CreatureState.Idling;
     }
 
-    public bool Attack(Vector2 direction, GameTime gameTime)
+    public bool Attack(GameTime gameTime)
     {
-        SetAnimationDirection(direction);
         State = CreatureState.Attacking;
 
         //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
         var animation = _animColl.GetAnimation(State, AnimDirection);
         animation.Play();
 
-        Direction = direction;
         return true;
+    }
+
+    public bool Attack(Vector2 direction, GameTime gameTime)
+    {
+        SetAnimationDirection(direction);
+        Direction = direction;
+
+        return Attack(gameTime);
     }
 
     public bool Die()
@@ -390,17 +442,8 @@ public class Player : ICreature
         if (false)
         {
             var rect = GetCollisionBox();
-
-            var boxTexture = new Texture2D(_spriteSheet.GraphicsDevice, rect.Width, rect.Height);
-            var boxData = new Color[rect.Width * rect.Height];
-
-            for (int i = 0; i < boxData.Length; i++)
-            {
-                boxData[i] = Color.Cyan;
-            }
-
-            boxTexture.SetData(boxData);
-            spriteBatch.Draw(boxTexture, new Vector2(rect.X, rect.Y), new Rectangle(0, 0, rect.Width, rect.Height),
+            spriteBatch.Draw(CollisionBoxTexture, new Vector2(rect.X, rect.Y),
+                new Rectangle(0, 0, rect.Width, rect.Height),
                 Color.White, 0f,
                 Vector2.Zero, 1, SpriteEffects.None, (Position.Y + rect.Height + 100) / GULPGame.SCREEN_Y_RESOLUTION);
         }

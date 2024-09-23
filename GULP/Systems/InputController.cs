@@ -56,7 +56,10 @@ public class InputController
 
         if (keyboardState.IsKeyDown(Keys.Space) && !_player.IsAttacking)
         {
-            _player.Attack(direction, gameTime);
+            if (!(downPressed || upPressed || leftPressed || rightPressed))
+                _player.Attack(gameTime);
+            else
+                _player.Attack(direction, gameTime);
         }
         else if (downPressed || upPressed || leftPressed || rightPressed)
         {
