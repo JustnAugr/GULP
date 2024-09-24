@@ -27,7 +27,7 @@ public class GULPGame : Game
     private const string TILED_PREFIX_ASSET_NAME = "Tiled";
     private const string MAP_FILE_ASSET_NAME = "map_01.tmx";
 
-    private GraphicsDeviceManager _graphics;
+    private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
     //Textures
@@ -74,7 +74,7 @@ public class GULPGame : Game
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
         _player = new Player(_playerTexture, new Vector2(15 * 16, 15 * 16), _map,
             _entityManager); //TODO spwan location from object layer
-
+        
         //TODO put these and the entitymanager into a GameContext class that we pass around as needed, along with a GameSettings class
         _camera = new Camera(_player, GraphicsDevice, _map);
         _map.Camera = _camera;

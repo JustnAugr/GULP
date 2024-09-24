@@ -12,9 +12,9 @@ namespace GULP.Entities;
 public class Player : Creature
 {
     //movement constants
-    private const float ACCELERATION = 1.0f;
-    private const float MAX_VELOCITY = 3.0f;
-    private const float INITIAL_VELOCITY = 1.0f;
+    protected override float Acceleration => 1f;
+    protected override float MaxVelocity => 3f;
+    protected override float InitialVelocity => 1f;
 
     //animation frame durations
     private const float ANIM_IDLE_FRAME_DURATION = 1 / 4f;
@@ -29,18 +29,12 @@ public class Player : Creature
     private const int HORIZONTAL_ATTACK_BOX_WIDTH = 15;
     private const int HORIZONTAL_ATTACK_BOX_HEIGHT = 18;
 
-    private readonly Map _map;
-    private readonly EntityManager _entityManager;
-    private float _velocity;
     private Texture2D _verticalAttackBoxTexture;
     private Texture2D _horizontalAttackBoxTexture;
 
     public Player(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
-        position)
+        position, map, entityManager)
     {
-        _map = map;
-        _entityManager = entityManager;
-
         //values on initialization
         Health = 100;
 
@@ -301,136 +295,6 @@ public class Player : Creature
         return attackBox;
     }
 
-    public override bool Walk(Vector2 direction, GameTime gameTime)
-    {
-        //if we're currently attacking and mid animation, we can't attack-cancel to run
-        if (IsAttacking)
-            return false;
-
-        //if we were just idilng, we need to build up speed. no speed buildup needed for attacks
-        if (State == CreatureState.Idling)
-            _velocity = INITIAL_VELOCITY;
-
-        //reset the old animation to 0 before we switch off of it, so that when we resume it later we resume from the start
-        var newAnimationDirection = direction.ToSpriteAnimation();
-        if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
-        {
-            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-        }
-
-        //we're walking, in a direction, with the animation facing that direction
-        State = CreatureState.Walking;
-        AnimDirection = direction.ToSpriteAnimation();
-        Direction = direction;
-
-        //ensure we're playin our animation if we've just changed from another one
-        AnimationCollection.GetAnimation(State, AnimDirection).Play();
-
-        //increase our velocity by our acceleration up to our max velocity
-        _velocity += ACCELERATION * (float)gameTime.ElapsedGameTime.TotalSeconds;
-        _velocity = Math.Min(_velocity, MAX_VELOCITY);
-
-        //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
-        var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
-
-        //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
-        var posX = Position.X + (_velocity / diagonalAdj) * direction.X;
-        var posY = Position.Y + (_velocity / diagonalAdj) * direction.Y;
-
-        //simple bounding for now to prevent us from going off screen
-        var currentSprite = AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite;
-        if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
-            posX = Position.X;
-
-        if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
-            posY = Position.Y;
-
-        //Collision Checking v2 
-        //todo can we abstract this out into Creature?
-        
-        //these are the tiles we'd be at if we moved in just the Y direction
-        var collisionBoxY = GetCollisionBox(new Vector2(Position.X, posY));
-        var tilesY = _map.GetTiles(collisionBoxY);
-        //these are the collisions we'd meet at those tiles
-        var collisionsY = _map.GetTileCollisions(tilesY);
-
-        foreach (var tile in tilesY)
-        {
-            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
-            if (creatureListExists && creatureList is { Count: > 0 })
-            {
-                foreach (var creature in creatureList)
-                {
-                    if (creature != this)
-                        collisionsY.Add(creature.GetCollisionBox());
-                }
-            }
-        }
-
-        foreach (var collision in collisionsY)
-        {
-            //we're only applying the Y movement, so just check the Y direction
-            if (direction.Y != 0)
-            {
-                if (collision.Intersects(collisionBoxY))
-                {
-                    direction.Y = 0;
-                    _velocity = Math.Max(INITIAL_VELOCITY,
-                        _velocity - .25f); //we apply friction until it causes us to get down to init velocity
-                    posY =
-                        Position.Y + _velocity / diagonalAdj * direction.Y; //some friction constant
-                }
-            }
-        }
-
-        //these are the tiles we'd be at if we moved in just the Y direction
-        var collisionBoxX = GetCollisionBox(new Vector2(posX, Position.Y));
-        var tilesX = _map.GetTiles(collisionBoxX);
-        //these are the collisions we'd meet at those tiles
-        var collisionsX = _map.GetTileCollisions(tilesX);
-
-        foreach (var tile in tilesX)
-        {
-            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
-            if (creatureListExists && creatureList is { Count: > 0 })
-            {
-                foreach (var creature in creatureList)
-                {
-                    if (creature != this)
-                        collisionsX.Add(creature.GetCollisionBox());
-                }
-            }
-        }
-
-        foreach (var collision in collisionsX)
-        {
-            //we're only applying the Y movement, so just check the Y direction
-            if (direction.X != 0)
-            {
-                if (collision.Intersects(collisionBoxX))
-                {
-                    direction.X = 0;
-                    _velocity = Math.Max(INITIAL_VELOCITY,
-                        _velocity - .25f); //we apply friction until it causes us to get down to init velocity
-                    posX = Position.X + _velocity / diagonalAdj * direction.X;
-                }
-            }
-        }
-
-        //apply our new position, bounded by the world and by collisions
-        //also update our tile->creature position dicts
-        var oldPosition = Position;
-        Position = new Vector2(posX, posY);
-
-        if (oldPosition != Position)
-        {
-            _entityManager.RemoveTileCreaturePosition(this, oldPosition);
-            _entityManager.AddTileCreaturePosition(this, Position);
-        }
-
-        return true;
-    }
-
     public override bool Attack(GameTime gameTime)
     {
         var previousState = State;
@@ -449,7 +313,7 @@ public class Player : Creature
             //get all entities at those tiles, check if our attackBox intersects their collisionBox
             //if it does, we consider it a hit on that creature
             var attackBox = GetAttackBox();
-            var tiles = _map.GetTiles(attackBox);
+            var tiles = Map.GetTiles(attackBox);
 
             //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
             //TODO this takes twice as long technically so let's revisit this later
@@ -457,7 +321,7 @@ public class Player : Creature
 
             foreach (var tile in tiles)
             {
-                var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+                var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
                 if (!creatureListExists || creatureList is not { Count: > 0 })
                     continue;
                 //not the player and intersecthing? you're gonna get hit!

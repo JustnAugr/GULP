@@ -8,21 +8,19 @@ namespace GULP.Entities;
 
 public class Slime : Creature
 {
-    private const float WALK_VELOCITY = 2.0f;
+    protected override float Acceleration => 0f;
+    protected override float MaxVelocity => 2f;
+    protected override float InitialVelocity => 2f;
+    
     private const int COLLISION_BOX_WIDTH = 12;
     private const int COLLISION_BOX_HEIGHT = 10;
 
-    private readonly Map _map;
-    private readonly EntityManager _entityManager;
-
-    public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet, position)
+    public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
+        position, map, entityManager)
     {
-        _map = map;
-        _entityManager = entityManager;
-        
         InitializeIdleAnimations();
         InitializeWalkAnimation();
-        
+
         //Debugging Texture
         CreateDebugTextures();
     }
@@ -124,126 +122,15 @@ public class Slime : Creature
         //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
         //towards the feet on the y-axis
         var rect = new Rectangle((int)Math.Floor(position.X) + sprite.Width / 2 - COLLISION_BOX_WIDTH / 2,
-            (int)Math.Floor(position.Y) + (int)(sprite.Height / 2) - COLLISION_BOX_HEIGHT/2,
+            (int)Math.Floor(position.Y) + (int)(sprite.Height / 2) - COLLISION_BOX_HEIGHT / 2,
             COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
 
         return rect;
     }
+
     public override Rectangle GetAttackBox(Vector2 position)
     {
         return new Rectangle();
-    }
-
-    public override bool Walk(Vector2 direction, GameTime gameTime)
-    {
-        //reset the old animation to 0 before we switch off of it, so that when we resume it later we resume from the start
-        var newAnimationDirection = direction.ToSpriteAnimation();
-        if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
-        {
-            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-        }
-
-        //we're walking, in a direction, with the animation facing that direction
-        State = CreatureState.Walking;
-        AnimDirection = direction.ToSpriteAnimation();
-        Direction = direction;
-
-        //ensure we're playin our animation if we've just changed from another one
-        AnimationCollection.GetAnimation(State, AnimDirection).Play();
-        
-        //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
-        var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
-        
-        //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
-        var posX = Position.X + (WALK_VELOCITY / diagonalAdj) * direction.X;
-        var posY = Position.Y + (WALK_VELOCITY / diagonalAdj) * direction.Y;
-        
-        //simple bounding for now to prevent us from going off screen
-        var currentSprite = AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite;
-        if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
-            posX = Position.X;
-        
-        if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
-            posY = Position.Y;
-        
-        //Collision Checking v2
-        //these are the tiles we'd be at if we moved in just the Y direction
-        var collisionBoxY = GetCollisionBox(new Vector2(Position.X, posY));
-        var tilesY = _map.GetTiles(collisionBoxY);
-        //these are the collisions we'd meet at those tiles
-        var collisionsY = _map.GetTileCollisions(tilesY);
-
-        foreach (var tile in tilesY)
-        {
-            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
-            if (creatureListExists && creatureList is { Count: > 0 })
-            {
-                foreach (var creature in creatureList)
-                {
-                    if (creature != this)
-                        collisionsY.Add(creature.GetCollisionBox());
-                }
-            }
-        }
-
-        foreach (var collision in collisionsY)
-        {
-            //we're only applying the Y movement, so just check the Y direction
-            if (direction.Y != 0)
-            {
-                if (collision.Intersects(collisionBoxY))
-                {
-                    direction.Y = 0;
-                    posY =
-                        Position.Y + WALK_VELOCITY / diagonalAdj * direction.Y; //some friction constant
-                }
-            }
-        }
-
-        //these are the tiles we'd be at if we moved in just the Y direction
-        var collisionBoxX = GetCollisionBox(new Vector2(posX, Position.Y));
-        var tilesX = _map.GetTiles(collisionBoxX);
-        //these are the collisions we'd meet at those tiles
-        var collisionsX = _map.GetTileCollisions(tilesX);
-
-        foreach (var tile in tilesX)
-        {
-            var creatureListExists = _entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
-            if (creatureListExists && creatureList is { Count: > 0 })
-            {
-                foreach (var creature in creatureList)
-                {
-                    if (creature != this)
-                        collisionsX.Add(creature.GetCollisionBox());
-                }
-            }
-        }
-
-        foreach (var collision in collisionsX)
-        {
-            //we're only applying the Y movement, so just check the Y direction
-            if (direction.X != 0)
-            {
-                if (collision.Intersects(collisionBoxX))
-                {
-                    direction.X = 0;
-                    posX = Position.X + WALK_VELOCITY / diagonalAdj * direction.X;
-                }
-            }
-        }
-
-        //apply our new position, bounded by the world and by collisions
-        //also update our tile->creature position dicts
-        var oldPosition = Position;
-        Position = new Vector2(posX, posY);
-
-        if (oldPosition != Position)
-        {
-            _entityManager.RemoveTileCreaturePosition(this, oldPosition);
-            _entityManager.AddTileCreaturePosition(this, Position);
-        }
-
-        return true;
     }
 
     public override bool Attack(GameTime gameTime)
