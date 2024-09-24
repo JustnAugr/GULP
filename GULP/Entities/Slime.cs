@@ -1,45 +1,25 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Linq;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
-using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace GULP.Entities;
 
-public class Slime : ICreature
+public class Slime : Creature
 {
     private const float WALK_VELOCITY = 2.0f;
     private const int COLLISION_BOX_WIDTH = 12;
     private const int COLLISION_BOX_HEIGHT = 10;
 
-    private readonly Texture2D _spriteSheet;
     private readonly Map _map;
-    private readonly Camera _camera;
     private readonly EntityManager _entityManager;
-    private SpriteAnimationColl _animColl;
-    private Texture2D _collisionBoxTexture;
 
-    public bool IsDealingDamage { get; }
-    public Vector2 Position { get; set; }
-    public Vector2 Direction { get; set; }
-    public float Health { get; set; }
-    public CreatureState State { get; private set; }
-    public SpriteDirection AnimDirection { get; set; }
-
-    public Slime(Texture2D spriteSheet, Vector2 position, Map map, Camera camera, EntityManager entityManager)
+    public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet, position)
     {
-        _spriteSheet = spriteSheet;
-        Position = position;
         _map = map;
-        _camera = camera;
         _entityManager = entityManager;
-
-        State = CreatureState.Idling;
-
-        _animColl = new SpriteAnimationColl();
+        
         InitializeIdleAnimations();
         InitializeWalkAnimation();
         
@@ -49,7 +29,7 @@ public class Slime : ICreature
 
     private void CreateDebugTextures()
     {
-        var cBoxText = new Texture2D(_spriteSheet.GraphicsDevice, COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
+        var cBoxText = new Texture2D(SpriteSheet.GraphicsDevice, COLLISION_BOX_WIDTH, COLLISION_BOX_HEIGHT);
         var cBoxData = new Color[COLLISION_BOX_WIDTH * COLLISION_BOX_HEIGHT];
 
         for (int i = 0; i < cBoxData.Length; i++)
@@ -58,40 +38,40 @@ public class Slime : ICreature
         }
 
         cBoxText.SetData(cBoxData);
-        _collisionBoxTexture = cBoxText;
+        CollisionBoxTexture = cBoxText;
     }
 
     private void InitializeIdleAnimations()
     {
         var ANIM_IDLE_FRAME_DURATION = 1 / 5f;
         var idleDown = new SpriteAnimation(ANIM_IDLE_FRAME_DURATION);
-        idleDown.AddFrame(new Sprite(_spriteSheet, 8, 12, 16, 12));
-        idleDown.AddFrame(new Sprite(_spriteSheet, 40, 12, 16, 12));
-        idleDown.AddFrame(new Sprite(_spriteSheet, 72, 13, 16, 11));
-        idleDown.AddFrame(new Sprite(_spriteSheet, 104, 13, 16, 11));
+        idleDown.AddFrame(new Sprite(SpriteSheet, 8, 12, 16, 12));
+        idleDown.AddFrame(new Sprite(SpriteSheet, 40, 12, 16, 12));
+        idleDown.AddFrame(new Sprite(SpriteSheet, 72, 13, 16, 11));
+        idleDown.AddFrame(new Sprite(SpriteSheet, 104, 13, 16, 11));
 
         var idleUp = new SpriteAnimation(ANIM_IDLE_FRAME_DURATION);
-        idleUp.AddFrame(new Sprite(_spriteSheet, 8, 76, 16, 12));
-        idleUp.AddFrame(new Sprite(_spriteSheet, 40, 76, 16, 12));
-        idleUp.AddFrame(new Sprite(_spriteSheet, 72, 77, 16, 11));
-        idleUp.AddFrame(new Sprite(_spriteSheet, 104, 77, 16, 11));
+        idleUp.AddFrame(new Sprite(SpriteSheet, 8, 76, 16, 12));
+        idleUp.AddFrame(new Sprite(SpriteSheet, 40, 76, 16, 12));
+        idleUp.AddFrame(new Sprite(SpriteSheet, 72, 77, 16, 11));
+        idleUp.AddFrame(new Sprite(SpriteSheet, 104, 77, 16, 11));
 
         var idleLeft = new SpriteAnimation(ANIM_IDLE_FRAME_DURATION);
-        idleLeft.AddFrame(new Sprite(_spriteSheet, 8, 44, 16, 12, SpriteEffects.FlipHorizontally));
-        idleLeft.AddFrame(new Sprite(_spriteSheet, 40, 44, 16, 12, SpriteEffects.FlipHorizontally));
-        idleLeft.AddFrame(new Sprite(_spriteSheet, 72, 45, 16, 11, SpriteEffects.FlipHorizontally));
-        idleLeft.AddFrame(new Sprite(_spriteSheet, 104, 45, 16, 11, SpriteEffects.FlipHorizontally));
+        idleLeft.AddFrame(new Sprite(SpriteSheet, 8, 44, 16, 12, SpriteEffects.FlipHorizontally));
+        idleLeft.AddFrame(new Sprite(SpriteSheet, 40, 44, 16, 12, SpriteEffects.FlipHorizontally));
+        idleLeft.AddFrame(new Sprite(SpriteSheet, 72, 45, 16, 11, SpriteEffects.FlipHorizontally));
+        idleLeft.AddFrame(new Sprite(SpriteSheet, 104, 45, 16, 11, SpriteEffects.FlipHorizontally));
 
         var idleRight = new SpriteAnimation(ANIM_IDLE_FRAME_DURATION);
-        idleRight.AddFrame(new Sprite(_spriteSheet, 8, 44, 16, 12));
-        idleRight.AddFrame(new Sprite(_spriteSheet, 40, 44, 16, 12));
-        idleRight.AddFrame(new Sprite(_spriteSheet, 72, 45, 16, 11));
-        idleRight.AddFrame(new Sprite(_spriteSheet, 104, 45, 16, 11));
+        idleRight.AddFrame(new Sprite(SpriteSheet, 8, 44, 16, 12));
+        idleRight.AddFrame(new Sprite(SpriteSheet, 40, 44, 16, 12));
+        idleRight.AddFrame(new Sprite(SpriteSheet, 72, 45, 16, 11));
+        idleRight.AddFrame(new Sprite(SpriteSheet, 104, 45, 16, 11));
 
-        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Down, idleDown);
-        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Up, idleUp);
-        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Left, idleLeft);
-        _animColl.AddAnimation(CreatureState.Idling, SpriteDirection.Right, idleRight);
+        AnimationCollection.AddAnimation(CreatureState.Idling, SpriteDirection.Down, idleDown);
+        AnimationCollection.AddAnimation(CreatureState.Idling, SpriteDirection.Up, idleUp);
+        AnimationCollection.AddAnimation(CreatureState.Idling, SpriteDirection.Left, idleLeft);
+        AnimationCollection.AddAnimation(CreatureState.Idling, SpriteDirection.Right, idleRight);
     }
 
     private void InitializeWalkAnimation()
@@ -99,52 +79,47 @@ public class Slime : ICreature
         var ANIM_WALK_FRAME_DURATION = 1 / 8f;
 
         var walkDown = new SpriteAnimation(ANIM_WALK_FRAME_DURATION);
-        walkDown.AddFrame(new Sprite(_spriteSheet, 6, 110, 20, 10));
-        walkDown.AddFrame(new Sprite(_spriteSheet, 42, 104, 12, 16));
-        walkDown.AddFrame(new Sprite(_spriteSheet, 73, 102, 14, 18));
-        walkDown.AddFrame(new Sprite(_spriteSheet, 104, 105, 16, 15));
-        walkDown.AddFrame(new Sprite(_spriteSheet, 136, 108, 16, 12));
-        walkDown.AddFrame(new Sprite(_spriteSheet, 168, 109, 16, 11));
+        walkDown.AddFrame(new Sprite(SpriteSheet, 6, 110, 20, 10));
+        walkDown.AddFrame(new Sprite(SpriteSheet, 42, 104, 12, 16));
+        walkDown.AddFrame(new Sprite(SpriteSheet, 73, 102, 14, 18));
+        walkDown.AddFrame(new Sprite(SpriteSheet, 104, 105, 16, 15));
+        walkDown.AddFrame(new Sprite(SpriteSheet, 136, 108, 16, 12));
+        walkDown.AddFrame(new Sprite(SpriteSheet, 168, 109, 16, 11));
 
         var walkUp = new SpriteAnimation(ANIM_WALK_FRAME_DURATION);
-        walkUp.AddFrame(new Sprite(_spriteSheet, 6, 174, 20, 10));
-        walkUp.AddFrame(new Sprite(_spriteSheet, 42, 168, 12, 16));
-        walkUp.AddFrame(new Sprite(_spriteSheet, 73, 166, 14, 18));
-        walkUp.AddFrame(new Sprite(_spriteSheet, 104, 169, 16, 15));
-        walkUp.AddFrame(new Sprite(_spriteSheet, 136, 172, 16, 12));
-        walkUp.AddFrame(new Sprite(_spriteSheet, 168, 173, 16, 11));
+        walkUp.AddFrame(new Sprite(SpriteSheet, 6, 174, 20, 10));
+        walkUp.AddFrame(new Sprite(SpriteSheet, 42, 168, 12, 16));
+        walkUp.AddFrame(new Sprite(SpriteSheet, 73, 166, 14, 18));
+        walkUp.AddFrame(new Sprite(SpriteSheet, 104, 169, 16, 15));
+        walkUp.AddFrame(new Sprite(SpriteSheet, 136, 172, 16, 12));
+        walkUp.AddFrame(new Sprite(SpriteSheet, 168, 173, 16, 11));
 
         var walkRight = new SpriteAnimation(ANIM_WALK_FRAME_DURATION);
-        walkRight.AddFrame(new Sprite(_spriteSheet, 6, 142, 20, 12));
-        walkRight.AddFrame(new Sprite(_spriteSheet, 42, 136, 12, 16));
-        walkRight.AddFrame(new Sprite(_spriteSheet, 74, 134, 12, 18));
-        walkRight.AddFrame(new Sprite(_spriteSheet, 104, 137, 16, 15));
-        walkRight.AddFrame(new Sprite(_spriteSheet, 136, 140, 16, 12));
-        walkRight.AddFrame(new Sprite(_spriteSheet, 168, 141, 16, 11));
+        walkRight.AddFrame(new Sprite(SpriteSheet, 6, 142, 20, 12));
+        walkRight.AddFrame(new Sprite(SpriteSheet, 42, 136, 12, 16));
+        walkRight.AddFrame(new Sprite(SpriteSheet, 74, 134, 12, 18));
+        walkRight.AddFrame(new Sprite(SpriteSheet, 104, 137, 16, 15));
+        walkRight.AddFrame(new Sprite(SpriteSheet, 136, 140, 16, 12));
+        walkRight.AddFrame(new Sprite(SpriteSheet, 168, 141, 16, 11));
 
         var walkLeft = new SpriteAnimation(ANIM_WALK_FRAME_DURATION);
-        walkLeft.AddFrame(new Sprite(_spriteSheet, 6, 142, 20, 10, SpriteEffects.FlipHorizontally));
-        walkLeft.AddFrame(new Sprite(_spriteSheet, 42, 136, 12, 16, SpriteEffects.FlipHorizontally));
-        walkLeft.AddFrame(new Sprite(_spriteSheet, 74, 134, 12, 18, SpriteEffects.FlipHorizontally));
-        walkLeft.AddFrame(new Sprite(_spriteSheet, 104, 137, 16, 15, SpriteEffects.FlipHorizontally));
-        walkLeft.AddFrame(new Sprite(_spriteSheet, 136, 140, 16, 12, SpriteEffects.FlipHorizontally));
-        walkLeft.AddFrame(new Sprite(_spriteSheet, 168, 141, 16, 11, SpriteEffects.FlipHorizontally));
+        walkLeft.AddFrame(new Sprite(SpriteSheet, 6, 142, 20, 10, SpriteEffects.FlipHorizontally));
+        walkLeft.AddFrame(new Sprite(SpriteSheet, 42, 136, 12, 16, SpriteEffects.FlipHorizontally));
+        walkLeft.AddFrame(new Sprite(SpriteSheet, 74, 134, 12, 18, SpriteEffects.FlipHorizontally));
+        walkLeft.AddFrame(new Sprite(SpriteSheet, 104, 137, 16, 15, SpriteEffects.FlipHorizontally));
+        walkLeft.AddFrame(new Sprite(SpriteSheet, 136, 140, 16, 12, SpriteEffects.FlipHorizontally));
+        walkLeft.AddFrame(new Sprite(SpriteSheet, 168, 141, 16, 11, SpriteEffects.FlipHorizontally));
 
-        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Down, walkDown);
-        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Up, walkUp);
-        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Right, walkRight);
-        _animColl.AddAnimation(CreatureState.Walking, SpriteDirection.Left, walkLeft);
+        AnimationCollection.AddAnimation(CreatureState.Walking, SpriteDirection.Down, walkDown);
+        AnimationCollection.AddAnimation(CreatureState.Walking, SpriteDirection.Up, walkUp);
+        AnimationCollection.AddAnimation(CreatureState.Walking, SpriteDirection.Right, walkRight);
+        AnimationCollection.AddAnimation(CreatureState.Walking, SpriteDirection.Left, walkLeft);
     }
 
-    public Rectangle GetCollisionBox()
-    {
-        return GetCollisionBox(Position);
-    }
-
-    public Rectangle GetCollisionBox(Vector2 position)
+    public override Rectangle GetCollisionBox(Vector2 position)
     {
         //get our max height and width sprites for the current animation
-        var sprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
+        var sprite = AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite;
 
         //draw our box in the middle of what the largest sprite for this animation would be, favoring a bit more
         //towards the feet on the y-axis
@@ -154,42 +129,27 @@ public class Slime : ICreature
 
         return rect;
     }
-
-    private SpriteDirection GetAnimationDirection(Vector2 direction)
+    public override Rectangle GetAttackBox(Vector2 position)
     {
-        //TODO maybe best moved into the enum class itself, with a to and from Vector2 direction
-        var x = direction.X;
-        var y = direction.Y;
-
-        //if we're moving left or right (non-diag or diag), we should face that way
-        //else just face up or down
-        if (x < 0)
-            return SpriteDirection.Left;
-        if (x > 0)
-            return SpriteDirection.Right;
-        if (y < 0)
-            return SpriteDirection.Up;
-        if (y > 0)
-            return SpriteDirection.Down;
-
-        return SpriteDirection.Down;
+        return new Rectangle();
     }
 
-    public bool Walk(Vector2 direction, GameTime gameTime)
+    public override bool Walk(Vector2 direction, GameTime gameTime)
     {
-        var newAnimationDirection = GetAnimationDirection(direction);
+        //reset the old animation to 0 before we switch off of it, so that when we resume it later we resume from the start
+        var newAnimationDirection = direction.ToSpriteAnimation();
         if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
         {
-            _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
+            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
         }
-        
-        //set new values pertaining to the state of this entity
+
+        //we're walking, in a direction, with the animation facing that direction
         State = CreatureState.Walking;
-        AnimDirection = newAnimationDirection;
+        AnimDirection = direction.ToSpriteAnimation();
         Direction = direction;
-        
+
         //ensure we're playin our animation if we've just changed from another one
-        _animColl.GetAnimation(State, AnimDirection).Play();
+        AnimationCollection.GetAnimation(State, AnimDirection).Play();
         
         //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
         var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
@@ -199,13 +159,12 @@ public class Slime : ICreature
         var posY = Position.Y + (WALK_VELOCITY / diagonalAdj) * direction.Y;
         
         //simple bounding for now to prevent us from going off screen
-        var currentSprite = _animColl.GetAnimation(State, AnimDirection).CurrentSprite;
+        var currentSprite = AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite;
         if (posX < 0 || posX > _map.PixelWidth - currentSprite.Width)
             posX = Position.X;
         
         if (posY < 0 || posY > _map.PixelHeight - currentSprite.Height)
             posY = Position.Y;
-        
         
         //Collision Checking v2
         //these are the tiles we'd be at if we moved in just the Y direction
@@ -283,58 +242,35 @@ public class Slime : ICreature
             _entityManager.RemoveTileCreaturePosition(this, oldPosition);
             _entityManager.AddTileCreaturePosition(this, Position);
         }
-        
+
         return true;
     }
 
-    public void Idle()
+    public override bool Attack(GameTime gameTime)
     {
-        if (State != CreatureState.Idling)
-            _animColl.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-
-        //todo add to iface/abstract Creature class
-        State = CreatureState.Idling;
-        _animColl.GetAnimation(State, AnimDirection).Play();
+        return true;
     }
 
-    public bool Attack(Vector2 direction, GameTime gameTime)
+    public override bool Attack(Vector2 direction, GameTime gameTime)
     {
         throw new System.NotImplementedException();
     }
 
-    public bool Die()
+    public override bool Die()
     {
-        throw new System.NotImplementedException();
+        //TODO
+        return false;
     }
 
-    public bool ReceiveDamage(float damageValue)
+    public override bool ReceiveDamage(float damageValue)
     {
-        throw new System.NotImplementedException();
+        //TODO
+        return false;
     }
 
-    public void Update(GameTime gameTime)
+    public override void DrawAttackBox(SpriteBatch spriteBatch)
     {
-        var animation = _animColl.GetAnimation(State, AnimDirection);
-        animation.Update(gameTime);
-    }
-
-    public void Draw(SpriteBatch spriteBatch)
-    {
-        //TODO move draw culling into the Sprite Draw method
-        if (Position.X + 30 < _camera.Left || Position.X > _camera.Right || Position.Y + 30 < _camera.Top ||
-            Position.Y > _camera.Bottom)
-            return;
-        
-        if (true)
-        {
-            var collisionBox = GetCollisionBox();
-            spriteBatch.Draw(_collisionBoxTexture, new Vector2(collisionBox.X, collisionBox.Y),
-                new Rectangle(0, 0, collisionBox.Width, collisionBox.Height),
-                Color.White * .5f, 0f,
-                Vector2.Zero, 1, SpriteEffects.None, 1f);
-        }
-        
-        var animation = _animColl.GetAnimation(State, AnimDirection);
-        animation.Draw(spriteBatch, Position);
+        //TODO
+        return;
     }
 }

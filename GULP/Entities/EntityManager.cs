@@ -16,7 +16,7 @@ public class EntityManager
 
     //using a vector2 here to represent each tile (in map grid-space)
     //theoretically an entity could be standing on 1->N tiles based on its size
-    public readonly Dictionary<Vector2, List<ICreature>> TileCreatureMap = new();
+    public readonly Dictionary<Vector2, List<Creature>> TileCreatureMap = new();
 
     public IEnumerable<IEntity> Entities => new ReadOnlyCollection<IEntity>(_entities);
 
@@ -62,7 +62,7 @@ public class EntityManager
     {
         _entitiesToAdd.Add(entity);
 
-        if (entity is ICreature creature)
+        if (entity is Creature creature)
             AddTileCreaturePosition(creature, creature.Position);
     }
 
@@ -70,11 +70,11 @@ public class EntityManager
     {
         _entitiesToRemove.Add(entity);
 
-        if (entity is ICreature creature)
+        if (entity is Creature creature)
             RemoveTileCreaturePosition(creature, creature.Position);
     }
 
-    public void RemoveTileCreaturePosition(ICreature creature, Vector2 position)
+    public void RemoveTileCreaturePosition(Creature creature, Vector2 position)
     {
         //get the tiles this entity was previously on, remove it from the tileEntityMap for that tile
         var oldTiles = _map.GetTiles(creature.GetCollisionBox(position));
@@ -87,12 +87,12 @@ public class EntityManager
         }
     }
 
-    public void AddTileCreaturePosition(ICreature creature, Vector2 position)
+    public void AddTileCreaturePosition(Creature creature, Vector2 position)
     {
         var newTiles = _map.GetTiles(creature.GetCollisionBox(position));
         foreach (var tile in newTiles)
         {
-            List<ICreature> newTileCreatureList = TileCreatureMap.GetValueOrDefault(tile, new List<ICreature>());
+            List<Creature> newTileCreatureList = TileCreatureMap.GetValueOrDefault(tile, new List<Creature>());
             newTileCreatureList.Add(creature);
             TileCreatureMap.TryAdd(tile, newTileCreatureList);
         }

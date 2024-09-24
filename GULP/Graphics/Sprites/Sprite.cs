@@ -6,6 +6,7 @@ namespace GULP.Graphics.Sprites;
 
 public class Sprite
 {
+    private const int LAYER_DEPTH = 2;
     private readonly SpriteEffects _spriteEffects;
     public Texture2D Texture { get; set; }
     public int X { get; set; }
@@ -32,11 +33,10 @@ public class Sprite
         //the lower the feet, the higher the precedence of it being drawn on top
         //this lets us stand behind something drawn in lower on the Y axis - in the "foreground"
         //we assume the sprite is always drawn on tile layer 1
-        var layerDepth = 2; //TODO should be a constant, the layer sprites are drawn on
 
         spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White, 0, new Vector2(0, 0), 1,
             _spriteEffects,
-            MathHelper.Clamp((position.Y + Height) / (GULPGame.SCREEN_Y_RESOLUTION * 16) * layerDepth, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
+            MathHelper.Clamp((position.Y + Height) / (GULPGame.SCREEN_Y_RESOLUTION * 16) * LAYER_DEPTH, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
         //we have to clmap this as when an entity gets down towards the bottom it can become undrawn as this division gets slightly over 1
     }
 }

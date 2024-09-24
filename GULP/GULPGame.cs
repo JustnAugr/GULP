@@ -17,6 +17,7 @@ public class GULPGame : Game
     //allowing the player to choose between 720p, 1080p, 1440p, etc
     public const int SCREEN_X_RESOLUTION = 2560;
     public const int SCREEN_Y_RESOLUTION = 1440;
+
     //this is the actual window size, regardless of the resolution chosen
     public const int SCREEN_WIDTH = 1920;
     public const int SCREEN_HEIGHT = 1080;
@@ -28,17 +29,18 @@ public class GULPGame : Game
 
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
-    private InputController _inputController;
 
     //Textures
     private Texture2D _playerTexture;
 
-    private Map _map;
 
     //Entities
     private EntityManager _entityManager;
     private Player _player;
+    
     private Camera _camera;
+    private Map _map;
+    private InputController _inputController;
 
     public GULPGame()
     {
@@ -73,12 +75,12 @@ public class GULPGame : Game
         _player = new Player(_playerTexture, new Vector2(15 * 16, 15 * 16), _map,
             _entityManager); //TODO spwan location from object layer
 
-        //TODO should the map and camera be globals? especially considering we're using them for things like draw culling...
+        //TODO put these and the entitymanager into a GameContext class that we pass around as needed, along with a GameSettings class
         _camera = new Camera(_player, GraphicsDevice, _map);
         _map.Camera = _camera;
 
         var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
-        var slime = new Slime(slimeTexture, new Vector2(40, 40), _map, _camera, _entityManager);
+        var slime = new Slime(slimeTexture, new Vector2(40, 40), _map, _entityManager);
 
         _entityManager.AddEntity(slime);
         _entityManager.AddEntity(_player);
@@ -96,7 +98,7 @@ public class GULPGame : Game
         _camera.Update(gameTime);
         _entityManager.Update(gameTime);
         _map.Update(gameTime);
-        
+
         //probably should be in a separate DebugHelper class like the entity collisionbox logic
         var frameRate = (int)Math.Ceiling(1 / (float)gameTime.ElapsedGameTime.TotalSeconds);
         //Debug.WriteLine("FPS = " + frameRate);
