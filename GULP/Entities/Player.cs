@@ -316,7 +316,6 @@ public class Player : Creature
             var tiles = Map.GetTiles(attackBox);
 
             //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
-            //TODO this takes twice as long technically so let's revisit this later
             var creatureSet = new HashSet<Creature>();
 
             foreach (var tile in tiles)
@@ -324,15 +323,17 @@ public class Player : Creature
                 var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
                 if (!creatureListExists || creatureList is not { Count: > 0 })
                     continue;
+
                 //not the player and intersecthing? you're gonna get hit!
                 foreach (var creature in creatureList)
-                    if (creature is not Player && creature.GetCollisionBox().Intersects(attackBox))
+                {
+                    if (!creatureSet.Contains(creature) && creature is not Player &&
+                        creature.GetCollisionBox().Intersects(attackBox))
+                    {
+                        Debug.WriteLine("HIT! on: " + creature.GetType());
                         creatureSet.Add(creature);
-            }
-
-            foreach (var creature in creatureSet)
-            {
-                Debug.WriteLine("HIT! on: " + creature.GetType());
+                    }
+                }
             }
         }
 
