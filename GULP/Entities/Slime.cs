@@ -11,15 +11,19 @@ public class Slime : Creature
     protected override float Acceleration => 0f;
     protected override float MaxVelocity => 2f;
     protected override float InitialVelocity => 2f;
-    
+
     private const int COLLISION_BOX_WIDTH = 12;
     private const int COLLISION_BOX_HEIGHT = 10;
+    private const float ANIM_IDLE_FRAME_DURATION = 1 / 5f;
+    private const float ANIM_WALK_FRAME_DURATION = 1 / 8f;
+    private const float ANIM_ATTACK_FRAME_DURATION = 1 / 8f;
 
     public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
         position, map, entityManager)
     {
         InitializeIdleAnimations();
-        InitializeWalkAnimation();
+        InitializeWalkAnimations();
+        InitializeAttackAnimations();
 
         //Debugging Texture
         CreateDebugTextures();
@@ -41,7 +45,6 @@ public class Slime : Creature
 
     private void InitializeIdleAnimations()
     {
-        var ANIM_IDLE_FRAME_DURATION = 1 / 5f;
         var idleDown = new SpriteAnimation(ANIM_IDLE_FRAME_DURATION);
         idleDown.AddFrame(new Sprite(SpriteSheet, 8, 12, 16, 12));
         idleDown.AddFrame(new Sprite(SpriteSheet, 40, 12, 16, 12));
@@ -72,10 +75,8 @@ public class Slime : Creature
         AnimationCollection.AddAnimation(CreatureState.Idling, SpriteDirection.Right, idleRight);
     }
 
-    private void InitializeWalkAnimation()
+    private void InitializeWalkAnimations()
     {
-        var ANIM_WALK_FRAME_DURATION = 1 / 8f;
-
         var walkDown = new SpriteAnimation(ANIM_WALK_FRAME_DURATION);
         walkDown.AddFrame(new Sprite(SpriteSheet, 6, 110, 20, 10));
         walkDown.AddFrame(new Sprite(SpriteSheet, 42, 104, 12, 16));
@@ -114,6 +115,19 @@ public class Slime : Creature
         AnimationCollection.AddAnimation(CreatureState.Walking, SpriteDirection.Left, walkLeft);
     }
 
+    private void InitializeAttackAnimations()
+    {
+        var attackDown = new SpriteAnimation(ANIM_ATTACK_FRAME_DURATION, shouldLoop: false);
+        attackDown.AddFrame(new Sprite(SpriteSheet, 7, 206, 18, 10));
+        attackDown.AddFrame(new Sprite(SpriteSheet, 39, 205, 18, 11));
+        attackDown.AddFrame(new Sprite(SpriteSheet, 73, 196, 14, 20));
+        attackDown.AddFrame(new Sprite(SpriteSheet, 105, 194, 14, 22));
+        attackDown.AddFrame(new Sprite(SpriteSheet, 137, 198, 14, 18));
+        attackDown.AddFrame(new Sprite(SpriteSheet, 167, 206, 18, 10));
+
+        AnimationCollection.AddAnimation(CreatureState.Attacking, SpriteDirection.Down, attackDown);
+    }
+
     public override Rectangle GetCollisionBox(Vector2 position)
     {
         //get our max height and width sprites for the current animation
@@ -136,11 +150,6 @@ public class Slime : Creature
     public override bool Attack(GameTime gameTime)
     {
         return true;
-    }
-
-    public override bool Attack(Vector2 direction, GameTime gameTime)
-    {
-        throw new System.NotImplementedException();
     }
 
     public override bool Die()

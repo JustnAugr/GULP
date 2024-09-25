@@ -85,7 +85,7 @@ public class GULPGame : Game
         _entityManager.AddEntity(slime);
         _entityManager.AddEntity(_player);
 
-        _inputController = new InputController(_player, _camera);
+        _inputController = new InputController(_player, _camera, slime);
     }
 
     protected override void Update(GameTime gameTime)

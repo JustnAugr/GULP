@@ -317,7 +317,6 @@ public class Player : Creature
 
             //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
             var creatureSet = new HashSet<Creature>();
-
             foreach (var tile in tiles)
             {
                 var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
@@ -331,7 +330,7 @@ public class Player : Creature
                         creature.GetCollisionBox().Intersects(attackBox))
                     {
                         Debug.WriteLine("HIT! on: " + creature.GetType());
-                        creatureSet.Add(creature);
+                        creatureSet.Add(creature); //make sure we don't hit again...
                     }
                 }
             }
