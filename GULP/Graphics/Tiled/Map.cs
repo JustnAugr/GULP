@@ -15,6 +15,7 @@ public class Map
 {
     public readonly List<Tileset> Tilesets = new();
     public readonly List<Layer> Layers = new();
+    public readonly List<Object> Objects = new();
 
     private readonly Dictionary<int, Tile> _tileCache = new();
 
@@ -95,7 +96,23 @@ public class Map
                             break;
                         case "objectgroup":
                         {
-                            //TODO write objectGroup layer loading: will be used for spawn locations
+                            while (reader.Read())
+                            {
+                                var subName = reader.Name;
+                                if (reader.NodeType == XmlNodeType.Element && subName == "object")
+                                {
+                                    var type = reader.GetAttribute("type") ?? throw new InvalidOperationException();
+                                    var x = int.Parse(reader.GetAttribute("x") ?? throw new InvalidOperationException());
+                                    var y = int.Parse(reader.GetAttribute("y") ?? throw new InvalidOperationException());
+                                    var width = int.Parse(reader.GetAttribute("width") ?? throw new InvalidOperationException());
+                                    var height = int.Parse(reader.GetAttribute("height") ?? throw new InvalidOperationException());
+                                    
+                                    var obj = new Object(type, x, y, width, height);
+                                    result.Objects.Add(obj);
+                                }
+                                else if (reader.NodeType == XmlNodeType.EndElement)
+                                    break;
+                            }
                         }
                             break;
                     }

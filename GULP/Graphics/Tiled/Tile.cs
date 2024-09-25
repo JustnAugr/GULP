@@ -6,6 +6,7 @@ namespace GULP.Graphics.Tiled;
 
 public class Tile
 {
+    public Rectangle Rect { get; }
     public Texture2D Texture { get; }
     public int X { get; }
     public int Y { get; }
@@ -23,6 +24,8 @@ public class Tile
         Width = width;
         Height = height;
         CollisionBox = collisionBox;
+
+        Rect = new Rectangle(X, Y, Width, Height);
     }
 
     public virtual void Draw(SpriteBatch spriteBatch, Vector2 position, float layerDepth)
@@ -32,7 +35,7 @@ public class Tile
         //  tile is "lower" on the screen -> this allows the the player to go "behind" a fence
         //- anything on layer 2 should be drawn above the player due to layerDepth scalar
         //- SCREEN_Y_RESOLUTION is used to compress the layerDepth value to a smaller scale float
-        spriteBatch.Draw(Texture, position, new Rectangle(X, Y, Width, Height), Color.White, 0, new Vector2(0, 0), 1,
+        spriteBatch.Draw(Texture, position, Rect, Color.White, 0, new Vector2(0, 0), 1,
             SpriteEffects.None, MathHelper.Clamp((position.Y + Height)/ (GULPGame.SCREEN_Y_RESOLUTION * 16)*layerDepth, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
     }
 }

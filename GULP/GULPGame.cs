@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using GULP.Entities;
 using GULP.Graphics.Tiled;
 using GULP.Systems;
@@ -67,13 +68,18 @@ public class GULPGame : Game
 
         //Map
         _map = Map.Load(Path.Combine(Content.RootDirectory, TILED_PREFIX_ASSET_NAME, MAP_FILE_ASSET_NAME), Content);
-
+        
+        var playerSpawnObjects = _map.Objects.Where(obj => obj.Type == ObjectType.PlayerSpawn).ToArray();
+        if (playerSpawnObjects.Length != 1)
+            throw new ArgumentOutOfRangeException(nameof(playerSpawnObjects), "Must have 1 PlayerSpawn object per map");
+        var playerSpawnLocation = playerSpawnObjects[0];
+        
         //Entities
         _entityManager = new EntityManager(_map);
 
         _playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
-        _player = new Player(_playerTexture, new Vector2(15 * 16, 15 * 16), _map,
-            _entityManager); //TODO spwan location from object layer
+        _player = new Player(_playerTexture, new Vector2(playerSpawnLocation.X, playerSpawnLocation.Y), _map,
+            _entityManager);
         
         //TODO put these and the entitymanager into a GameContext class that we pass around as needed, along with a GameSettings class
         _camera = new Camera(_player, GraphicsDevice, _map);

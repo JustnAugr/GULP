@@ -368,6 +368,6 @@
 </data>
  </layer>
  <objectgroup id="8" name="objectLayer">
-  <object id="1" type="PLAYER_SPAWN" x="240" y="240" width="16" height="16"/>
+  <object id="1" type="playerSpawn" x="240" y="240" width="16" height="16"/>
  </objectgroup>
 </map>
