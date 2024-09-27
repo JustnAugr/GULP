@@ -28,7 +28,7 @@ public class InputController
         ProcessCameraInputs(keyboardState);
         ProcessPlayerInputs(keyboardState, gameTime);
         //TODO temp for testing before we add an AI controller
-        ProcessSlimeInputs(keyboardState, gameTime);
+        //ProcessSlimeInputs(keyboardState, gameTime);
 
         _previousKeyboardState = keyboardState;
     }

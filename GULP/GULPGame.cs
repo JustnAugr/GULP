@@ -86,7 +86,7 @@ public class GULPGame : Game
         _map.Camera = _camera;
 
         var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
-        var slime = new Slime(slimeTexture, new Vector2(40, 40), _map, _entityManager);
+        var slime = new Slime(slimeTexture, new Vector2(40, 40), _map, _entityManager, _player);
 
         _entityManager.AddEntity(slime);
         _entityManager.AddEntity(_player);

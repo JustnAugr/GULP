@@ -212,7 +212,7 @@ public abstract class Creature : IEntity
     public abstract bool Die();
     public abstract bool ReceiveDamage(float damageValue);
 
-    public void Update(GameTime gameTime)
+    public virtual void Update(GameTime gameTime)
     {
         var animation = AnimationCollection.GetAnimation(State, AnimDirection);
         animation.Update(gameTime);

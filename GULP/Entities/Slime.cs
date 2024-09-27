@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
 using Microsoft.Xna.Framework;
@@ -8,6 +9,8 @@ namespace GULP.Entities;
 
 public class Slime : Creature
 {
+    //TODO this is temporary until we have an EnemyManager
+    private readonly Player _player;
     protected override float Acceleration => 0f;
     protected override float MaxVelocity => 2f;
     protected override float InitialVelocity => 2f;
@@ -18,9 +21,16 @@ public class Slime : Creature
     private const float ANIM_WALK_FRAME_DURATION = 1 / 8f;
     private const float ANIM_ATTACK_FRAME_DURATION = 1 / 8f;
 
-    public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
+    //TODO clean these up, timePerDecision can obviously be a const
+    private float _timePerDecision = .2f; //basically the slime's reaction time
+    private float _timeSinceLastDecision = float.MaxValue; //when did we last make a decision?
+    private CreatureState _lastDecision; //what was our last decision?
+
+    public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager, Player player) : base(
+        spriteSheet,
         position, map, entityManager)
     {
+        _player = player;
         InitializeIdleAnimations();
         InitializeWalkAnimations();
         InitializeAttackAnimations();
@@ -117,6 +127,7 @@ public class Slime : Creature
 
     private void InitializeAttackAnimations()
     {
+        //todo finish this, dummy
         var attackDown = new SpriteAnimation(ANIM_ATTACK_FRAME_DURATION, shouldLoop: false);
         attackDown.AddFrame(new Sprite(SpriteSheet, 7, 206, 18, 10));
         attackDown.AddFrame(new Sprite(SpriteSheet, 39, 205, 18, 11));
@@ -130,6 +141,7 @@ public class Slime : Creature
 
     public override Rectangle GetCollisionBox(Vector2 position)
     {
+        //TODO clean this up so slimes can slide better when rubbing against surfaces, it's quite bad on fences
         //get our max height and width sprites for the current animation
         var sprite = AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite;
 
@@ -149,6 +161,13 @@ public class Slime : Creature
 
     public override bool Attack(GameTime gameTime)
     {
+        //TODO actually attack...
+        var previousState = State;
+        State = CreatureState.Attacking;
+
+        //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
+        var animation = AnimationCollection.GetAnimation(State, AnimDirection);
+        animation.Play();
         return true;
     }
 
@@ -168,5 +187,62 @@ public class Slime : Creature
     {
         //TODO
         return;
+    }
+
+    public override void Update(GameTime gameTime)
+    {
+        //todo Testing Player Tracking for now
+        
+        //increment time since last decision
+        _timeSinceLastDecision += (float)gameTime.ElapsedGameTime.TotalSeconds;
+        
+        //if we've had enough time to react
+        if (_timeSinceLastDecision > _timePerDecision)
+        {
+            Debug.WriteLine("Decision Time");
+            _timeSinceLastDecision = 0f; //reset
+            
+            //calculate distance and directional vector
+            var dist = Vector2.Distance(_player.Position, Position);
+            var direction = _player.Position - Position;
+            direction.Normalize();
+            direction.Round();
+
+            //if we're within 2 tiles, we attack
+            if (dist < 32) //two tiles
+            {
+                Debug.WriteLine("ATTACK: " + direction);
+                Attack(direction, gameTime);
+                _lastDecision = CreatureState.Attacking;
+            }
+            else
+            {
+                //else let's walk toward the player
+                Debug.WriteLine("WALK: " + direction);
+                Walk(direction, gameTime);
+                _lastDecision = CreatureState.Walking;
+            }
+        }
+        else
+        {
+            //we haven't had time to change our action, continue performing it
+            Debug.WriteLine("No Decision");
+            switch (_lastDecision)
+            {
+                case CreatureState.Walking:
+                    Debug.WriteLine("WALK: " + Direction);
+                    Walk(Direction, gameTime);
+                    break;
+                case CreatureState.Attacking:
+                    Attack(Direction, gameTime);
+                    Debug.WriteLine("ATTACK: " + Direction);
+                    break;
+                default:
+                    Idle();
+                    break;
+            }
+        }
+
+        base.Update(gameTime);
     }
 }
