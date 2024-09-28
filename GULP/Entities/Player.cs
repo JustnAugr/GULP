@@ -14,7 +14,9 @@ public class Player : Creature
     //movement constants
     protected override float Acceleration => 1f;
     protected override float MaxVelocity => 3f;
-    protected override float InitialVelocity => 1f;
+    protected override float InitialVelocity => 1.5f;
+    protected override float Friction => 2f; //has to be more than acceleration
+    protected override float IdleVelocityPenalty => 2.5f; //same as above, more than accel
 
     //animation frame durations
     private const float ANIM_IDLE_FRAME_DURATION = 1 / 4f;
@@ -29,9 +31,6 @@ public class Player : Creature
     private const int HORIZONTAL_ATTACK_BOX_WIDTH = 15;
     private const int HORIZONTAL_ATTACK_BOX_HEIGHT = 18;
 
-    private Texture2D _verticalAttackBoxTexture;
-    private Texture2D _horizontalAttackBoxTexture;
-
     public Player(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
         position, map, entityManager)
     {
@@ -42,6 +41,7 @@ public class Player : Creature
         InitializeIdleAnimations();
         InitializeWalkAnimations();
         InitializeAttackAnimations();
+        //TODO death animation
 
         //Debug Rectangles
         CreateDebugRects();
@@ -72,7 +72,7 @@ public class Player : Creature
         }
 
         vABoxText.SetData(vABoxData);
-        _verticalAttackBoxTexture = vABoxText;
+        VerticalBoxTexture = vABoxText;
 
         //and the horizontal attack box
         var hABoxText = new Texture2D(SpriteSheet.GraphicsDevice, HORIZONTAL_ATTACK_BOX_WIDTH,
@@ -85,7 +85,7 @@ public class Player : Creature
         }
 
         hABoxText.SetData(hABoxData);
-        _horizontalAttackBoxTexture = hABoxText;
+        HorizontalBoxTexture = hABoxText;
     }
 
     private void InitializeIdleAnimations()
@@ -255,7 +255,7 @@ public class Player : Creature
         return collisionBox;
     }
 
-    public override Rectangle GetAttackBox(Vector2 position)
+    protected override Rectangle GetAttackBox(Vector2 position)
     {
         //A box representing the area of our sword swing when attacking, variable in size depending on if we're 
         //facing up/down or left/right
@@ -295,48 +295,18 @@ public class Player : Creature
         return attackBox;
     }
 
-    public override bool Attack(GameTime gameTime)
+    public override void Update(GameTime gameTime)
     {
-        var previousState = State;
-        State = CreatureState.Attacking;
+        base.Update(gameTime);
 
-        //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
-        var animation = AnimationCollection.GetAnimation(State, AnimDirection);
-        animation.Play();
-
-        //if we are in the process of a new attack, check if we've hit anything
-        //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
-        if (previousState != CreatureState.Attacking)
+        //allow for a bit of attacking movement to make our attacks feel faster, more snappy
+        //we're essentially sliding forward in the attack direction if we're attacking off of a movement
+        if (IsAttacking && Velocity > InitialVelocity)
         {
-            //the play here matches what we did for collisions more or less:
-            //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
-            //get all entities at those tiles, check if our attackBox intersects their collisionBox
-            //if it does, we consider it a hit on that creature
-            var attackBox = GetAttackBox();
-            var tiles = Map.GetTiles(attackBox);
-
-            //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
-            var creatureSet = new HashSet<Creature>();
-            foreach (var tile in tiles)
-            {
-                var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
-                if (!creatureListExists || creatureList is not { Count: > 0 })
-                    continue;
-
-                //not the player and intersecthing? you're gonna get hit!
-                foreach (var creature in creatureList)
-                {
-                    if (!creatureSet.Contains(creature) && creature is not Player &&
-                        creature.GetCollisionBox().Intersects(attackBox))
-                    {
-                        Debug.WriteLine("HIT! on: " + creature.GetType());
-                        creatureSet.Add(creature); //make sure we don't hit again...
-                    }
-                }
-            }
+            Move(Direction, Velocity / 4f, gameTime);
+            Velocity = Math.Max(InitialVelocity,
+                Velocity - IdleVelocityPenalty * 1/2f * (float)gameTime.ElapsedGameTime.TotalSeconds);
         }
-
-        return true;
     }
 
     public override bool Die()
@@ -345,16 +315,10 @@ public class Player : Creature
         return false;
     }
 
-    public override bool ReceiveDamage(float damageValue)
-    {
-        //TODO
-        return false;
-    }
-
     public override void DrawAttackBox(SpriteBatch spriteBatch)
     {
         var attackBox = GetAttackBox();
-        spriteBatch.Draw(Direction.X != 0 ? _horizontalAttackBoxTexture : _verticalAttackBoxTexture,
+        spriteBatch.Draw(Direction.X != 0 ? HorizontalBoxTexture : VerticalBoxTexture,
             new Vector2(attackBox.X, attackBox.Y),
             new Rectangle(0, 0, attackBox.Width, attackBox.Height),
             Color.White * .5f, 0f,

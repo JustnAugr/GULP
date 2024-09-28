@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -58,7 +59,7 @@ public class SpriteAnimation
 
     public void Stop()
     {
-        PlaybackProgress = 0;
+        //we don't explicitly reset the progress here so that when Draw() gets called, we don't re-draw the first frame
         IsPlaying = false;
     }
 
@@ -93,6 +94,11 @@ public class SpriteAnimation
 
     public void Draw(SpriteBatch spriteBatch, Vector2 position)
     {
+        Draw(spriteBatch, position, Color.White);
+    }
+
+    public void Draw(SpriteBatch spriteBatch, Vector2 position, Color tint)
+    {
         //normalizing the heights because we draw from the top and if I don't we'd have weird effects when a sprites bobs
         //up and down
         var currentFrame = CurrentFrame;
@@ -109,6 +115,11 @@ public class SpriteAnimation
                 position = new Vector2(position.X - (currentSprite.Width - MinWidth), position.Y);
         }
 
-        Sprites[currentFrame]?.Draw(spriteBatch, position);
+        //if we just finished an animation and are about to draw nothing, just redraw the last frame
+        //then on next update we should get progressed to our next animation
+        if (currentFrame == -1)
+            currentFrame = Sprites.Count - 1;
+
+        Sprites[currentFrame]?.Draw(spriteBatch, position, tint);
     }
 }

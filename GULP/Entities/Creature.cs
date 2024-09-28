@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
 using Microsoft.Xna.Framework;
@@ -10,19 +11,30 @@ namespace GULP.Entities;
 
 public abstract class Creature : IEntity
 {
-    private const float FRICTION = .25f;
+    //absolute creature constants
+    private const float DAMAGED_COLOR_TIME = .25f;
+
+    //constants to be overriden by each creature
     protected virtual float Acceleration => 0f;
     protected virtual float MaxVelocity => 0f;
     protected virtual float InitialVelocity => 0f;
+    protected virtual float Friction => 0f;
+    protected virtual float IdleVelocityPenalty => 0f;
 
     protected float Velocity;
-    
+
     protected readonly Map Map;
     protected readonly EntityManager EntityManager;
-    
+
     protected readonly Texture2D SpriteSheet;
     protected Texture2D CollisionBoxTexture;
+    protected Texture2D HorizontalBoxTexture;
+    protected Texture2D VerticalBoxTexture;
     protected readonly SpriteAnimationColl AnimationCollection = new();
+
+    private bool _damaged;
+    private readonly Color _damagedColor = Color.Red * .75f;
+    private float _damagedTimer;
 
     public float Health { get; set; }
     public Vector2 Direction { get; set; }
@@ -55,6 +67,11 @@ public abstract class Creature : IEntity
 
     protected HashSet<Rectangle> GetCollisions(Vector2 position)
     {
+        return GetCollisions(position, Direction);
+    }
+
+    private HashSet<Rectangle> GetCollisions(Vector2 position, Vector2 direction)
+    {
         var collisionBox = GetCollisionBox(position);
         var tiles = Map.GetTiles(collisionBox);
         //these are the collisions we'd meet at those tiles
@@ -73,9 +90,13 @@ public abstract class Creature : IEntity
             }
         }
 
+        //why do we do this? well imagine we're running to the right but someone is running into us from the left
+        //we should still be able to run right, so we adjust the collisionBox to just consider the rightmost slice of width=1
+        //similar concept for up/down mvmt
+        var adjustedCollisionBox = GetDirectionAdjustedCollisionBox(collisionBox, direction);
         foreach (var collision in collisions)
         {
-            if (!collision.Intersects(collisionBox))
+            if (!collision.Intersects(adjustedCollisionBox))
             {
                 //return anything that's not actually colliding, this is possible if we're on the same tile but not
                 //really intersecting it yet
@@ -86,7 +107,23 @@ public abstract class Creature : IEntity
         return collisions;
     }
 
-    protected void UpdatePosition(Vector2 newPosition)
+    private Rectangle GetDirectionAdjustedCollisionBox(Rectangle collisionBox, Vector2 direction)
+    {
+        if (direction.X > 0)
+            return new Rectangle(collisionBox.Right, collisionBox.Y, 1, collisionBox.Height);
+        if (direction.X < 0)
+            return new Rectangle(collisionBox.Left, collisionBox.Y, 1, collisionBox.Height);
+
+        if (direction.Y > 0)
+            return new Rectangle(collisionBox.X, collisionBox.Bottom, collisionBox.Width, 1);
+        if (direction.Y < 0)
+            return new Rectangle(collisionBox.X, collisionBox.Top, collisionBox.Width, 1);
+
+        //this shouldn't ever happen
+        return collisionBox;
+    }
+
+    private void UpdatePosition(Vector2 newPosition)
     {
         //apply our new position and
         //also update our tile->creature position dicts in the entityManager
@@ -100,22 +137,18 @@ public abstract class Creature : IEntity
         }
     }
 
-    public Rectangle GetAttackBox()
+    protected Rectangle GetAttackBox()
     {
         return GetAttackBox(Position);
     }
 
-    public abstract Rectangle GetAttackBox(Vector2 position);
+    protected abstract Rectangle GetAttackBox(Vector2 position);
 
     public bool Walk(Vector2 direction, GameTime gameTime)
     {
         //if we're currently attacking and mid animation, we can't attack-cancel to run
         if (IsAttacking)
             return false;
-
-        //if we were just idilng, we need to build up speed. no speed buildup needed for attacks
-        if (State == CreatureState.Idling)
-            Velocity = InitialVelocity;
 
         //reset the old animation to 0 before we switch off of it, so that when we resume it later we resume from the start
         var newAnimationDirection = direction.ToSpriteAnimation();
@@ -136,65 +169,92 @@ public abstract class Creature : IEntity
         Velocity += Acceleration * (float)gameTime.ElapsedGameTime.TotalSeconds;
         Velocity = Math.Min(Velocity, MaxVelocity);
 
+        Move(direction, Velocity, gameTime);
+        return true;
+    }
+
+    protected void Move(Vector2 direction, float velocity, GameTime gameTime)
+    {
         //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
         var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
 
         //full eq for newPos = currentPos + (velocity * acceleration * gameTime * direction)
-        var posX = Position.X + (Velocity / diagonalAdj) * direction.X;
-        var posY = Position.Y + (Velocity / diagonalAdj) * direction.Y;
+        var posX = Position.X + (velocity / diagonalAdj) * direction.X;
+        var posY = Position.Y + (velocity / diagonalAdj) * direction.Y;
 
-        //simple bounding for now to prevent us from going off screen
         var currentSprite = AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite;
-        if (posX < 0 || posX > Map.PixelWidth - currentSprite.Width)
-            posX = Position.X;
 
-        if (posY < 0 || posY > Map.PixelHeight - currentSprite.Height)
-            posY = Position.Y;
+        //before we do any bounds or collisions checking, are we even on screen?
+        //this is so if we're spawning creatures off screen, they can wander ON screen
+        //TBD on if we'll need this when we move to DFS based pathing (which would presumably spawn them on a tile on screen
+        var inBoundsX = (Position.X >= 0 && Position.X <= Map.PixelWidth);
+        var inBoundsY = (Position.Y >= 0 && Position.Y <= Map.PixelHeight);
 
-        //Collision Checking v2 
-        //these are the tiles we'd be at if we moved in just the Y direction
-        //we're only applying the Y movement, so just check the Y direction
-        if (direction.Y != 0)
+        if (inBoundsX && inBoundsY)
         {
-            var collisionsY = GetCollisions(new Vector2(Position.X, posY));
-            //if we have at least 1 collision
-            if (collisionsY.Count != 0)
+            //simple bounding for now to prevent us from going off screen
+            if (posX < 0 || posX > Map.PixelWidth - currentSprite.Width)
+                posX = Position.X;
+
+            if (posY < 0 || posY > Map.PixelHeight - currentSprite.Height)
+                posY = Position.Y;
+
+            //Collision Checking v2 
+            //these are the tiles we'd be at if we moved in just the Y direction
+            //we're only applying the Y movement, so just check the Y direction
+            if (direction.Y != 0)
             {
-                direction.Y = 0;
-                Velocity = Math.Max(InitialVelocity,
-                    Velocity - FRICTION); //we apply friction until it causes us to get down to init velocity
-                posY =
-                    Position.Y + Velocity / diagonalAdj * direction.Y; //some friction constant
+                var collisionsY = GetCollisions(new Vector2(Position.X, posY), new Vector2(0, direction.Y));
+                //if we have at least 1 collision
+                if (collisionsY.Count != 0)
+                {
+                    direction.Y = 0;
+                    Velocity = Math.Max(InitialVelocity,
+                        Velocity - Friction *
+                        (float)gameTime.ElapsedGameTime
+                            .TotalSeconds); //we apply friction until it causes us to get down to init velocity
+                    Debug.WriteLine(Velocity);
+                    posY =
+                        Position.Y + Velocity / diagonalAdj * direction.Y; //some friction constant
+                }
+            }
+
+            //these are the tiles we'd be at if we moved in just the Y direction
+            //we're only applying the Y movement, so just check the Y direction
+            if (direction.X != 0)
+            {
+                var collisionsX = GetCollisions(new Vector2(posX, Position.Y), new Vector2(direction.X, 0));
+                //if we have at least 1 collision
+                if (collisionsX.Count != 0)
+                {
+                    direction.X = 0;
+                    Velocity = Math.Max(InitialVelocity,
+                        Velocity - Friction *
+                        (float)gameTime.ElapsedGameTime
+                            .TotalSeconds); //we apply friction until it causes us to get down to init velocity
+                    Debug.WriteLine(Velocity);
+                    posX = Position.X + Velocity / diagonalAdj * direction.X;
+                }
             }
         }
 
-        //these are the tiles we'd be at if we moved in just the Y direction
-        //we're only applying the Y movement, so just check the Y direction
-        if (direction.X != 0)
-        {
-            var collisionsX = GetCollisions(new Vector2(posX, Position.Y));
-            //if we have at least 1 collision
-            if (collisionsX.Count != 0)
-            {
-                direction.X = 0;
-                Velocity = Math.Max(InitialVelocity,
-                    Velocity - FRICTION); //we apply friction until it causes us to get down to init velocity
-                posX = Position.X + Velocity / diagonalAdj * direction.X;
-            }
-        }
-
+        //both our entity map and our self reference of position
         UpdatePosition(new Vector2(posX, posY));
-        return true;
     }
 
-    public void Idle()
+    public void Idle(GameTime gameTime)
     {
         //if we're currently attacking and mid animation, we can't go to idle
         if (IsAttacking)
             return;
 
+        //if we weren't idling we should reset our old animation
         if (State != CreatureState.Idling)
             AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
+
+        //because we've been idling, decrease our velocity over time
+        Velocity = Math.Max(Velocity - IdleVelocityPenalty * (float)gameTime.ElapsedGameTime.TotalSeconds,
+            InitialVelocity);
 
         State = CreatureState.Idling;
         AnimationCollection.GetAnimation(State, AnimDirection).Play();
@@ -208,19 +268,89 @@ public abstract class Creature : IEntity
         return Attack(gameTime);
     }
 
-    public abstract bool Attack(GameTime gameTime);
+    public bool Attack(GameTime gameTime)
+    {
+        var previousState = State;
+        State = CreatureState.Attacking;
+
+        //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
+        var animation = AnimationCollection.GetAnimation(State, AnimDirection);
+        animation.Play();
+
+        //if we are in the process of a new attack, check if we've hit anything
+        //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
+        if (previousState != CreatureState.Attacking)
+        {
+            //reset our old animation so when we resume it we start at the beginning
+            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
+
+            //the play here matches what we did for collisions more or less:
+            //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
+            //get all entities at those tiles, check if our attackBox intersects their collisionBox
+            //if it does, we consider it a hit on that creature
+            var attackBox = GetAttackBox();
+            var tiles = Map.GetTiles(attackBox);
+
+            //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
+            var creatureSet = new HashSet<Creature>();
+            foreach (var tile in tiles)
+            {
+                var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+                if (!creatureListExists || creatureList is not { Count: > 0 })
+                    continue;
+
+                //not type==self and intersecting? you're gonna get hit!
+                //TODO this would need to be reworked if we had multiple enemy types, unless we're implicitly enabling friendly fire...
+                foreach (var creature in creatureList)
+                {
+                    if (!creatureSet.Contains(creature) && creature.GetType() != GetType() &&
+                        creature.GetCollisionBox().Intersects(attackBox))
+                    {
+                        Debug.WriteLine("HIT! on: " + creature.GetType());
+                        creature.ReceiveDamage(25f);
+                        creatureSet.Add(creature); //make sure we don't hit again...
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     public abstract bool Die();
-    public abstract bool ReceiveDamage(float damageValue);
+
+    public bool ReceiveDamage(float damageValue)
+    {
+        Health -= damageValue;
+        _damaged = true;
+
+        return true;
+    }
 
     public virtual void Update(GameTime gameTime)
     {
         var animation = AnimationCollection.GetAnimation(State, AnimDirection);
         animation.Update(gameTime);
 
-        //say we were attacking and this .Update() finished the attack animation,
-        //rather than draw nothing we should go idle
+        //say we just finished attacking after the above ^, then we should Idle until we receive a new input
         if (!animation.IsPlaying)
-            Idle();
+            Idle(gameTime);
+
+        //time to die edition
+        if (Health <= 0)
+        {
+            Debug.WriteLine(GetType() + " would have died!");
+            EntityManager.RemoveEntity(this);
+        }
+
+        //Progress our 'damaged' timer if we've been damaged and are showing red
+        if (!_damaged) return;
+        _damagedTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (_damagedTimer > DAMAGED_COLOR_TIME)
+        {
+            _damaged = false;
+            _damagedTimer = 0;
+        }
     }
 
     public void DrawCollisionBox(SpriteBatch spriteBatch)
@@ -238,7 +368,7 @@ public abstract class Creature : IEntity
     {
         //This will get moved into some DebugHelper or something, it allows me to see the player's actual collisionbox
         //drawn on top of the sprite
-        if (true)
+        if (false)
         {
             DrawCollisionBox(spriteBatch);
 
@@ -247,6 +377,6 @@ public abstract class Creature : IEntity
         }
 
         var animation = AnimationCollection.GetAnimation(State, AnimDirection);
-        animation.Draw(spriteBatch, Position);
+        animation.Draw(spriteBatch, Position, _damaged ? _damagedColor : Color.White);
     }
 }

@@ -31,6 +31,11 @@ public class Sprite
 
     public void Draw(SpriteBatch spriteBatch, Vector2 position)
     {
+        Draw(spriteBatch, position, Color.White);
+    }
+
+    public void Draw(SpriteBatch spriteBatch, Vector2 position, Color tint)
+    {
         //take the texture, extract the rectangle starting at X,Y with this height and width
         //draw it in our world at position
         //the layerDepth that we're drawing at uses the position of the Sprite at its lowest point (feet)
@@ -38,7 +43,7 @@ public class Sprite
         //this lets us stand behind something drawn in lower on the Y axis - in the "foreground"
         //we assume the sprite is always drawn on tile layer 1
 
-        spriteBatch.Draw(Texture, position, Rect, Color.White, 0, new Vector2(0, 0), 1,
+        spriteBatch.Draw(Texture, position, Rect, tint, 0, new Vector2(0, 0), 1,
             _spriteEffects,
             MathHelper.Clamp((position.Y + Height) / (GULPGame.SCREEN_Y_RESOLUTION * 16) * LAYER_DEPTH, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
         //we have to clmap this as when an entity gets down towards the bottom it can become undrawn as this division gets slightly over 1

@@ -102,11 +102,14 @@ public class Map
                                 if (reader.NodeType == XmlNodeType.Element && subName == "object")
                                 {
                                     var type = reader.GetAttribute("type") ?? throw new InvalidOperationException();
-                                    var x = int.Parse(reader.GetAttribute("x") ?? throw new InvalidOperationException());
-                                    var y = int.Parse(reader.GetAttribute("y") ?? throw new InvalidOperationException());
-                                    var width = int.Parse(reader.GetAttribute("width") ?? throw new InvalidOperationException());
-                                    var height = int.Parse(reader.GetAttribute("height") ?? throw new InvalidOperationException());
-                                    
+                                    var x = int.Parse(reader.GetAttribute("x") ??
+                                                      throw new InvalidOperationException());
+                                    var y = int.Parse(reader.GetAttribute("y") ??
+                                                      throw new InvalidOperationException());
+                                    //Tiled just won't set these on the map at all if they're 0, which we might do if we're really specifying a point
+                                    //and not really a rectangle
+                                    var width = int.Parse(reader.GetAttribute("width") ?? "0");
+                                    var height = int.Parse(reader.GetAttribute("height") ?? "0");
                                     var obj = new Object(type, x, y, width, height);
                                     result.Objects.Add(obj);
                                 }
