@@ -149,7 +149,7 @@ public abstract class Creature : IEntity
         //if we're currently attacking and mid animation, we can't attack-cancel to run
         if (IsAttacking)
             return false;
-        
+
         //get the oldAnimation
         var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
 
@@ -169,7 +169,7 @@ public abstract class Creature : IEntity
 
         //increase our velocity by our acceleration up to our max velocity
         Velocity += Acceleration * (float)gameTime.ElapsedGameTime.TotalSeconds;
-        Velocity = Math.Min(Velocity, MaxVelocity);
+        Velocity = Math.Min(Math.Max(Velocity, InitialVelocity), MaxVelocity);
 
         Move(direction, Velocity, gameTime);
         return true;
@@ -215,7 +215,6 @@ public abstract class Creature : IEntity
                         Velocity - Friction *
                         (float)gameTime.ElapsedGameTime
                             .TotalSeconds); //we apply friction until it causes us to get down to init velocity
-                    Debug.WriteLine(Velocity);
                     posY =
                         Position.Y + Velocity / diagonalAdj * direction.Y; //some friction constant
                 }
@@ -234,7 +233,6 @@ public abstract class Creature : IEntity
                         Velocity - Friction *
                         (float)gameTime.ElapsedGameTime
                             .TotalSeconds); //we apply friction until it causes us to get down to init velocity
-                    Debug.WriteLine(Velocity);
                     posX = Position.X + Velocity / diagonalAdj * direction.X;
                 }
             }
@@ -252,6 +250,7 @@ public abstract class Creature : IEntity
 
         //if we weren't idling we should reset our old animation
         var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
+        var previousState = State;
         State = CreatureState.Idling;
         var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
         if (oldAnimation != newAnimation)
@@ -261,8 +260,8 @@ public abstract class Creature : IEntity
         }
 
         //because we've been idling, decrease our velocity over time
-        Velocity = Math.Max(Velocity - IdleVelocityPenalty * (float)gameTime.ElapsedGameTime.TotalSeconds,
-            InitialVelocity);
+        if (previousState != CreatureState.Attacking)
+            Velocity = InitialVelocity;
     }
 
     public virtual bool Attack(GameTime gameTime)
@@ -275,12 +274,12 @@ public abstract class Creature : IEntity
         //persist old props
         var previousState = State;
         var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
-        
+
         //set new stateful props
         AnimDirection = direction.ToSpriteAnimation();
         Direction = direction;
         State = CreatureState.Attacking;
-        
+
         //reset our old animation, play our new animation as needed
         var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
         if (oldAnimation != newAnimation)

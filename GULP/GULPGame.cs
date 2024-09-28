@@ -88,13 +88,13 @@ public class GULPGame : Game
         var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
         var enemyManager = new EnemyManager(slimeTexture, _entityManager, _map, _camera, _player);
 
-        var slime = new Slime(slimeTexture, new Vector2(_player.Position.X + 40, _player.Position.Y + 40), _map, _entityManager, _player);
-        _entityManager.AddEntity(slime);
+        //var slime = new Slime(slimeTexture, new Vector2(_player.Position.X + 40, _player.Position.Y + 40), _map, _entityManager, _player);
+        //_entityManager.AddEntity(slime);
         
         _entityManager.AddEntity(_player);
-        //_entityManager.AddEntity(enemyManager);
+        _entityManager.AddEntity(enemyManager);
 
-        _inputController = new InputController(_player, _camera, slime);
+        _inputController = new InputController(_player, _camera);
     }
 
     protected override void Update(GameTime gameTime)

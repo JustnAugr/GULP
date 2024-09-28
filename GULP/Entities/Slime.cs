@@ -239,58 +239,58 @@ public class Slime : Creature
     public override void Update(GameTime gameTime)
     {
         //todo Testing Player Tracking for now
-        //
-        // //increment time since last decision
-        // _timeSinceLastDecision += (float)gameTime.ElapsedGameTime.TotalSeconds;
-        //
-        // //if we've had enough time to react
-        // if (_timeSinceLastDecision > _timePerDecision)
-        // {
-        //     //Debug.WriteLine("Decision Time");
-        //     _timeSinceLastDecision = 0f; //reset
-        //     
-        //     //calculate distance and directional vector
-        //     var dist = Vector2.Distance(_player.Position, Position);
-        //     var direction = _player.Position - Position;
-        //     direction.Normalize();
-        //     direction.Round();
-        //
-        //     //if we're within 2 tiles, we attack
-        //     if (dist < 32) //two tiles
-        //     {
-        //         //Debug.WriteLine("ATTACK: " + direction);
-        //         //Attack(direction, gameTime);
-        //         Idle();
-        //         _lastDecision = CreatureState.Attacking;
-        //     }
-        //     else
-        //     {
-        //         //else let's walk toward the player
-        //         //Debug.WriteLine("WALK: " + direction);
-        //         Walk(direction, gameTime);
-        //         _lastDecision = CreatureState.Walking;
-        //     }
-        // }
-        // else
-        // {
-        //     //we haven't had time to change our action, continue performing it
-        //     //Debug.WriteLine("No Decision");
-        //     switch (_lastDecision)
-        //     {
-        //         case CreatureState.Walking:
-        //             //Debug.WriteLine("WALK: " + Direction);
-        //             Walk(Direction, gameTime);
-        //             break;
-        //         case CreatureState.Attacking:
-        //             //Attack(Direction, gameTime);
-        //             Idle();
-        //             //Debug.WriteLine("ATTACK: " + Direction);
-        //             break;
-        //         default:
-        //             Idle();
-        //             break;
-        //     }
-        // }
+        
+        //increment time since last decision
+        _timeSinceLastDecision += (float)gameTime.ElapsedGameTime.TotalSeconds;
+        
+        //if we've had enough time to react
+        if (_timeSinceLastDecision > TIME_PER_DECISION)
+        {
+            //Debug.WriteLine("Decision Time");
+            _timeSinceLastDecision = 0f; //reset
+            
+            //calculate distance and directional vector
+            var dist = Vector2.Distance(_player.Position, Position);
+            var direction = _player.Position - Position;
+            direction.Normalize();
+            direction.Round();
+        
+            //if we're within 2 tiles, we attack
+            if (dist < 32) //two tiles
+            {
+                //Debug.WriteLine("ATTACK: " + direction);
+                //Attack(direction, gameTime);
+                Idle(gameTime);
+                _lastDecision = CreatureState.Attacking;
+            }
+            else
+            {
+                //else let's walk toward the player
+                //Debug.WriteLine("WALK: " + direction);
+                Walk(direction, gameTime);
+                _lastDecision = CreatureState.Walking;
+            }
+        }
+        else
+        {
+            //we haven't had time to change our action, continue performing it
+            //Debug.WriteLine("No Decision");
+            switch (_lastDecision)
+            {
+                case CreatureState.Walking:
+                    //Debug.WriteLine("WALK: " + Direction);
+                    Walk(Direction, gameTime);
+                    break;
+                case CreatureState.Attacking:
+                    //Attack(Direction, gameTime);
+                    Idle(gameTime);
+                    //Debug.WriteLine("ATTACK: " + Direction);
+                    break;
+                default:
+                    Idle(gameTime);
+                    break;
+            }
+        }
 
         base.Update(gameTime);
     }
