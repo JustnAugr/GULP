@@ -28,7 +28,7 @@ public class AnimatedTile : Tile
             return -1;
         }
     }
-    public float PlaybackProgress { get; set; }
+    private float PlaybackProgress { get; set; }
     public bool IsPlaying { get; private set; } = true;
     public float Duration { get; private set; }
 

@@ -21,7 +21,7 @@ public class SpriteAnimation
 
     public float MinHeight { get; private set; } = float.MaxValue;
 
-    public int CurrentFrame
+    private int CurrentFrame
     {
         get
         {
@@ -39,9 +39,9 @@ public class SpriteAnimation
     }
 
     public Sprite CurrentSprite => Sprites[CurrentFrame];
-    public float PlaybackProgress { get; set; }
+    private float PlaybackProgress { get; set; }
     public bool IsPlaying { get; private set; } = true;
-    public float Duration { get; private set; }
+    private float Duration { get; set; }
 
     public SpriteAnimation(float defaultDuration = float.NaN, bool shouldLoop = true, bool normalizeHeight = true,
         bool normalizeWidth = false)
@@ -54,6 +54,9 @@ public class SpriteAnimation
 
     public void Play()
     {
+        if (!IsPlaying)
+            PlaybackProgress = 0;
+        
         IsPlaying = true;
     }
 

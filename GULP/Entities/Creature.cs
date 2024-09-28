@@ -149,21 +149,23 @@ public abstract class Creature : IEntity
         //if we're currently attacking and mid animation, we can't attack-cancel to run
         if (IsAttacking)
             return false;
+        
+        //get the oldAnimation
+        var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
 
-        //reset the old animation to 0 before we switch off of it, so that when we resume it later we resume from the start
-        var newAnimationDirection = direction.ToSpriteAnimation();
-        if (State is not CreatureState.Walking || AnimDirection != newAnimationDirection)
-        {
-            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-        }
-
+        //set our stateful props
         //we're walking, in a direction, with the animation facing that direction
         State = CreatureState.Walking;
         AnimDirection = direction.ToSpriteAnimation();
         Direction = direction;
 
         //ensure we're playin our animation if we've just changed from another one
-        AnimationCollection.GetAnimation(State, AnimDirection).Play();
+        var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
+        if (oldAnimation != newAnimation)
+        {
+            oldAnimation.Stop();
+            newAnimation.Play();
+        }
 
         //increase our velocity by our acceleration up to our max velocity
         Velocity += Acceleration * (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -249,41 +251,48 @@ public abstract class Creature : IEntity
             return;
 
         //if we weren't idling we should reset our old animation
-        if (State != CreatureState.Idling)
-            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
+        var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
+        State = CreatureState.Idling;
+        var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
+        if (oldAnimation != newAnimation)
+        {
+            oldAnimation.Stop();
+            newAnimation.Play();
+        }
 
         //because we've been idling, decrease our velocity over time
         Velocity = Math.Max(Velocity - IdleVelocityPenalty * (float)gameTime.ElapsedGameTime.TotalSeconds,
             InitialVelocity);
-
-        State = CreatureState.Idling;
-        AnimationCollection.GetAnimation(State, AnimDirection).Play();
     }
 
-    public virtual bool Attack(Vector2 direction, GameTime gameTime)
+    public virtual bool Attack(GameTime gameTime)
     {
+        return Attack(Direction, gameTime);
+    }
+
+    public bool Attack(Vector2 direction, GameTime gameTime)
+    {
+        //persist old props
+        var previousState = State;
+        var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
+        
+        //set new stateful props
         AnimDirection = direction.ToSpriteAnimation();
         Direction = direction;
-
-        return Attack(gameTime);
-    }
-
-    public bool Attack(GameTime gameTime)
-    {
-        var previousState = State;
         State = CreatureState.Attacking;
-
-        //we need to make sure to start playing the animation in case we attacked previously and it'd be ended
-        var animation = AnimationCollection.GetAnimation(State, AnimDirection);
-        animation.Play();
+        
+        //reset our old animation, play our new animation as needed
+        var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
+        if (oldAnimation != newAnimation)
+        {
+            oldAnimation.Stop();
+            newAnimation.Play();
+        }
 
         //if we are in the process of a new attack, check if we've hit anything
         //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
         if (previousState != CreatureState.Attacking)
         {
-            //reset our old animation so when we resume it we start at the beginning
-            AnimationCollection.GetAnimation(State, AnimDirection).PlaybackProgress = 0;
-
             //the play here matches what we did for collisions more or less:
             //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
             //get all entities at those tiles, check if our attackBox intersects their collisionBox
