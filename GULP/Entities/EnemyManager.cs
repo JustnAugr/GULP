@@ -11,7 +11,7 @@ namespace GULP.Entities;
 
 public class EnemyManager : IEntity
 {
-    private const float TIME_PER_SPAWN = 5f; //every 5 seconds?
+    private const float TIME_PER_SPAWN = 20f; //every 20 seconds?
 
     private float _timeSinceLastSpawn = float.MaxValue;
     private readonly List<Object> _slimeSpawnObjects;

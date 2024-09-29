@@ -21,7 +21,7 @@ public class SpriteAnimation
 
     public float MinHeight { get; private set; } = float.MaxValue;
 
-    private int CurrentFrame
+    public int CurrentFrame
     {
         get
         {
@@ -34,7 +34,8 @@ public class SpriteAnimation
                     return i;
             }
 
-            return -1;
+            //if we're over, replay the last sprite until we can transition to a new State and Animation
+            return _spriteDurations.Count - 1;
         }
     }
 

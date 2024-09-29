@@ -19,7 +19,6 @@ public abstract class Creature : IEntity
     protected virtual float MaxVelocity => 0f;
     protected virtual float InitialVelocity => 0f;
     protected virtual float Friction => 0f;
-    protected virtual float IdleVelocityPenalty => 0f;
 
     protected float Velocity;
 
@@ -32,8 +31,9 @@ public abstract class Creature : IEntity
     protected Texture2D VerticalBoxTexture;
     protected readonly SpriteAnimationColl AnimationCollection = new();
 
+    protected bool ShouldDealDamage;
     private bool _damaged;
-    private readonly Color _damagedColor = Color.Red * .75f;
+    private readonly Color _damagedColor = Color.Red * .95f;
     private float _damagedTimer;
 
     public float Health { get; set; }
@@ -44,6 +44,9 @@ public abstract class Creature : IEntity
 
     public bool IsAttacking => //attacking is going to be a "heavy" action, we can't cancel it
         State == CreatureState.Attacking && AnimationCollection.GetAnimation(State, AnimDirection).IsPlaying;
+
+    public int Width => AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite.Width;
+    public int Height => AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite.Height;
 
     protected Creature(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager)
     {
@@ -161,7 +164,7 @@ public abstract class Creature : IEntity
 
         //ensure we're playin our animation if we've just changed from another one
         var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
-        if (oldAnimation != newAnimation)
+        if (oldAnimation != newAnimation || !newAnimation.IsPlaying)
         {
             oldAnimation.Stop();
             newAnimation.Play();
@@ -177,6 +180,10 @@ public abstract class Creature : IEntity
 
     protected void Move(Vector2 direction, float velocity, GameTime gameTime)
     {
+        //safety around our AI calculating directions which will potentially be NaN NaN if the distance was 0
+        if (double.IsNaN(direction.X) || double.IsNaN(direction.Y))
+            return;
+
         //diagonalAdj helps us accomodate moving on two axis, or we'd move super fast on the diag
         var diagonalAdj = direction.X != 0 && direction.Y != 0 ? 1.5f : 1f;
 
@@ -244,8 +251,8 @@ public abstract class Creature : IEntity
 
     public void Idle(GameTime gameTime)
     {
-        //if we're currently attacking and mid animation, we can't go to idle
-        if (IsAttacking)
+        //if we're currently in middle of a hard-block animation, we can't go to idle
+        if (IsAttacking || State is CreatureState.Dead)
             return;
 
         //if we weren't idling we should reset our old animation
@@ -271,8 +278,6 @@ public abstract class Creature : IEntity
 
     public bool Attack(Vector2 direction, GameTime gameTime)
     {
-        //persist old props
-        var previousState = State;
         var oldAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
 
         //set new stateful props
@@ -282,47 +287,53 @@ public abstract class Creature : IEntity
 
         //reset our old animation, play our new animation as needed
         var newAnimation = AnimationCollection.GetAnimation(State, AnimDirection);
-        if (oldAnimation != newAnimation)
+        if (oldAnimation != newAnimation || !newAnimation.IsPlaying)
         {
             oldAnimation.Stop();
             newAnimation.Play();
-        }
 
-        //if we are in the process of a new attack, check if we've hit anything
-        //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
-        if (previousState != CreatureState.Attacking)
-        {
-            //the play here matches what we did for collisions more or less:
-            //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
-            //get all entities at those tiles, check if our attackBox intersects their collisionBox
-            //if it does, we consider it a hit on that creature
-            var attackBox = GetAttackBox();
-            var tiles = Map.GetTiles(attackBox);
-
-            //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
-            var creatureSet = new HashSet<Creature>();
-            foreach (var tile in tiles)
-            {
-                var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
-                if (!creatureListExists || creatureList is not { Count: > 0 })
-                    continue;
-
-                //not type==self and intersecting? you're gonna get hit!
-                //TODO this would need to be reworked if we had multiple enemy types, unless we're implicitly enabling friendly fire...
-                foreach (var creature in creatureList)
-                {
-                    if (!creatureSet.Contains(creature) && creature.GetType() != GetType() &&
-                        creature.GetCollisionBox().Intersects(attackBox))
-                    {
-                        Debug.WriteLine("HIT! on: " + creature.GetType());
-                        creature.ReceiveDamage(25f);
-                        creatureSet.Add(creature); //make sure we don't hit again...
-                    }
-                }
-            }
+            //our old attack animation finished and we just triggered a new one
+            //we queue up eventually dealing damage for individual creatures to handle
+            //and do so at the beginning or end of their attacks, when they choose
+            ShouldDealDamage = true;
         }
 
         return true;
+    }
+
+    protected void DealDamage(GameTime gameTime, float damageValue)
+    {
+        //if we are in the process of a new attack, check if we've hit anything
+        //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
+
+        //the play here matches what we did for collisions more or less:
+        //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
+        //get all entities at those tiles, check if our attackBox intersects their collisionBox
+        //if it does, we consider it a hit on that creature
+        var attackBox = GetAttackBox();
+        var tiles = Map.GetTiles(attackBox);
+
+        //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
+        var creatureSet = new HashSet<Creature>();
+        foreach (var tile in tiles)
+        {
+            var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            if (!creatureListExists || creatureList is not { Count: > 0 })
+                continue;
+
+            //not type==self and intersecting? you're gonna get hit!
+            //TODO this would need to be reworked if we had multiple enemy types, unless we're implicitly enabling friendly fire...
+            foreach (var creature in creatureList)
+            {
+                if (!creatureSet.Contains(creature) && creature.GetType() != GetType() &&
+                    creature.GetCollisionBox().Intersects(attackBox))
+                {
+                    Debug.WriteLine("HIT! on: " + creature.GetType());
+                    creature.ReceiveDamage(damageValue);
+                    creatureSet.Add(creature); //make sure we don't hit again...
+                }
+            }
+        }
     }
 
     public abstract bool Die();
@@ -335,33 +346,47 @@ public abstract class Creature : IEntity
         return true;
     }
 
+    protected abstract void TryDealDamage(GameTime gameTime);
+
     public virtual void Update(GameTime gameTime)
     {
         var animation = AnimationCollection.GetAnimation(State, AnimDirection);
         animation.Update(gameTime);
 
-        //say we just finished attacking after the above ^, then we should Idle until we receive a new input
-        if (!animation.IsPlaying)
-            Idle(gameTime);
+        //did we finish dying? begone!
+        if (!animation.IsPlaying && State is CreatureState.Dead)
+        {
+            EntityManager.RemoveEntity(this);
+            return;
+        }
 
         //time to die edition
-        if (Health <= 0)
+        if (Health <= 0 && State is not CreatureState.Dead)
         {
-            Debug.WriteLine(GetType() + " would have died!");
-            EntityManager.RemoveEntity(this);
+            Die();
+            return;
         }
 
         //Progress our 'damaged' timer if we've been damaged and are showing red
-        if (!_damaged) return;
-        _damagedTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
-        if (_damagedTimer > DAMAGED_COLOR_TIME)
+        if (_damaged)
         {
-            _damaged = false;
-            _damagedTimer = 0;
+            _damagedTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (_damagedTimer > DAMAGED_COLOR_TIME)
+            {
+                _damaged = false;
+                _damagedTimer = 0;
+            }
+        }
+
+        //if we ShouldDealDamage, try it out
+        //delegates to individual creature implementations based on if checks pass on when they want to deal damage
+        if (ShouldDealDamage)
+        {
+            TryDealDamage(gameTime);
         }
     }
 
-    public void DrawCollisionBox(SpriteBatch spriteBatch)
+    private void DrawCollisionBox(SpriteBatch spriteBatch)
     {
         var collisionBox = GetCollisionBox();
         spriteBatch.Draw(CollisionBoxTexture, new Vector2(collisionBox.X, collisionBox.Y),
@@ -370,7 +395,7 @@ public abstract class Creature : IEntity
             Vector2.Zero, 1, SpriteEffects.None, 1f);
     }
 
-    public abstract void DrawAttackBox(SpriteBatch spriteBatch);
+    protected abstract void DrawAttackBox(SpriteBatch spriteBatch);
 
     public void Draw(SpriteBatch spriteBatch)
     {
@@ -385,6 +410,7 @@ public abstract class Creature : IEntity
         }
 
         var animation = AnimationCollection.GetAnimation(State, AnimDirection);
-        animation.Draw(spriteBatch, Position, _damaged ? _damagedColor : Color.White);
+        animation.Draw(spriteBatch, Position,
+            _damaged && State is not CreatureState.Dead ? _damagedColor : Color.White);
     }
 }

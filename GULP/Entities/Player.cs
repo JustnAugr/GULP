@@ -11,12 +11,14 @@ namespace GULP.Entities;
 
 public class Player : Creature
 {
+    private const float BASE_HEALTH = 1000f;
+
     //movement constants
     protected override float Acceleration => 1f;
     protected override float MaxVelocity => 3f;
     protected override float InitialVelocity => 1.5f;
     protected override float Friction => 2f; //has to be more than acceleration
-    protected override float IdleVelocityPenalty => 2.5f; //same as above, more than accel
+    private const float IDLE_VELOCITY_PENALTY = 2.5f; //same as above, more than accel
 
     //animation frame durations
     private const float ANIM_IDLE_FRAME_DURATION = 1 / 4f;
@@ -26,16 +28,21 @@ public class Player : Creature
     //collision and attack box sizes
     private const int COLLISION_BOX_WIDTH = 15;
     private const int COLLISION_BOX_HEIGHT = 9;
-    private const int VERTICAL_ATTACK_BOX_WIDTH = 22;
-    private const int VERTICAL_ATTACK_BOX_HEIGHT = 10;
-    private const int HORIZONTAL_ATTACK_BOX_WIDTH = 15;
-    private const int HORIZONTAL_ATTACK_BOX_HEIGHT = 18;
+    private const int UPDOWN_ATTACK_BOX_WIDTH = 22; //named on the player AnimDirection
+    private const int UPDOWN_ATTACK_BOX_HEIGHT = 10;
+    private const int LEFTRIGHT_ATTACK_BOX_WIDTH = 15;
+    private const int LEFTRIGHT_ATTACK_BOX_HEIGHT = 18;
+    private const float LEFTRIGHT_ATTACK_BOX_VELOCITY_MULT = (1 / 2f);
+    private const float UPDOWN_ATTACK_BOX_VELOCITY_MULT = (1 / 2f);
+
+    private const int DAMAGE_DEALING_FRAME = 1;
+    private const float DAMAGE_VALUE = 25f;
 
     public Player(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
         position, map, entityManager)
     {
         //values on initialization
-        Health = 100;
+        Health = BASE_HEALTH;
 
         //initialize our animations and store them in a double keyed collection for easy lookup
         InitializeIdleAnimations();
@@ -62,9 +69,9 @@ public class Player : Creature
         CollisionBoxTexture = cBoxText;
 
         //and a rectangle for the vertical attack box
-        var vABoxText = new Texture2D(SpriteSheet.GraphicsDevice, VERTICAL_ATTACK_BOX_WIDTH,
-            VERTICAL_ATTACK_BOX_HEIGHT);
-        var vABoxData = new Color[VERTICAL_ATTACK_BOX_WIDTH * VERTICAL_ATTACK_BOX_HEIGHT];
+        var vABoxText = new Texture2D(SpriteSheet.GraphicsDevice, UPDOWN_ATTACK_BOX_WIDTH,
+            UPDOWN_ATTACK_BOX_HEIGHT);
+        var vABoxData = new Color[UPDOWN_ATTACK_BOX_WIDTH * UPDOWN_ATTACK_BOX_HEIGHT];
 
         for (int i = 0; i < vABoxData.Length; i++)
         {
@@ -75,9 +82,9 @@ public class Player : Creature
         VerticalBoxTexture = vABoxText;
 
         //and the horizontal attack box
-        var hABoxText = new Texture2D(SpriteSheet.GraphicsDevice, HORIZONTAL_ATTACK_BOX_WIDTH,
-            HORIZONTAL_ATTACK_BOX_HEIGHT);
-        var hABoxData = new Color[HORIZONTAL_ATTACK_BOX_WIDTH * HORIZONTAL_ATTACK_BOX_HEIGHT];
+        var hABoxText = new Texture2D(SpriteSheet.GraphicsDevice, LEFTRIGHT_ATTACK_BOX_WIDTH,
+            LEFTRIGHT_ATTACK_BOX_HEIGHT);
+        var hABoxData = new Color[LEFTRIGHT_ATTACK_BOX_WIDTH * LEFTRIGHT_ATTACK_BOX_HEIGHT];
 
         for (int i = 0; i < hABoxData.Length; i++)
         {
@@ -259,6 +266,7 @@ public class Player : Creature
     {
         //A box representing the area of our sword swing when attacking, variable in size depending on if we're 
         //facing up/down or left/right
+        //we also scale it by a multiplier depending on how fast we're travelling to make high speed attacking feel nicer
 
         //offset it from the collisionbox, as we consider this the "core" area of our Player that the sword will emit from
         //the collision box for attacking uses the first frame as reference, so our attackbox is based on that first frame
@@ -268,31 +276,52 @@ public class Player : Creature
 
         //our AnimationDirection is going to either be to the left or to the right
         //so we offset the attackbox from this width
-        if (Direction.X != 0)
+        if (AnimDirection is SpriteDirection.Left or SpriteDirection.Right)
         {
             //make sure we're properly drawing to the left or right of our player collisionBox
-            var widthOffset = (int)Math.Floor(Direction.X) == 1 ? collisionBox.Width : HORIZONTAL_ATTACK_BOX_WIDTH;
+            var widthOffset = (int)Math.Floor(Direction.X) == 1
+                ? collisionBox.Width
+                : LEFTRIGHT_ATTACK_BOX_WIDTH * Math.Max(Velocity * LEFTRIGHT_ATTACK_BOX_VELOCITY_MULT, 1);
             //not entirely outside of the collisionBox, bc we don't want to give him a CRAZY far out swing range
             posX += (int)Math.Floor(widthOffset * Direction.X);
             //draw around center of collisionBox, then slowly focused more downward as we have a downward arc
-            posY = posY + collisionBox.Height / 1.25f - HORIZONTAL_ATTACK_BOX_HEIGHT / 2f;
+            posY = posY + collisionBox.Height / 1.25f - LEFTRIGHT_ATTACK_BOX_HEIGHT / 2f;
         }
-        else if (Direction.Y != 0) //our AnimationDirection is going to be up or down, offset attackbox from this height
+        else if
+            (AnimDirection is SpriteDirection.Up
+             or SpriteDirection
+                 .Down) //our AnimationDirection is going to be up or down, offset attackbox from this height
         {
             //similar to above, but we keep it in the middle
-            var heightOffset = (int)Math.Floor(Direction.Y) == 1 ? collisionBox.Height : VERTICAL_ATTACK_BOX_HEIGHT;
-            posX = posX + collisionBox.Width / 2f - VERTICAL_ATTACK_BOX_WIDTH / 2f;
+            var heightOffset = (int)Math.Floor(Direction.Y) == 1
+                ? collisionBox.Height
+                : UPDOWN_ATTACK_BOX_HEIGHT * Math.Max(Velocity * UPDOWN_ATTACK_BOX_VELOCITY_MULT, 1);
+            posX = posX + collisionBox.Width / 2f - UPDOWN_ATTACK_BOX_WIDTH / 2f;
             posY += (int)Math.Floor(heightOffset * Direction.Y);
         }
 
         var attackBox = new Rectangle(
             (int)Math.Floor(posX),
             (int)Math.Floor(posY),
-            Direction.X != 0 ? HORIZONTAL_ATTACK_BOX_WIDTH : VERTICAL_ATTACK_BOX_WIDTH,
-            Direction.X != 0 ? HORIZONTAL_ATTACK_BOX_HEIGHT : VERTICAL_ATTACK_BOX_HEIGHT
+            (int)(AnimDirection is SpriteDirection.Left or SpriteDirection.Right
+                ? LEFTRIGHT_ATTACK_BOX_WIDTH * Math.Max(Velocity * LEFTRIGHT_ATTACK_BOX_VELOCITY_MULT, 1)
+                : UPDOWN_ATTACK_BOX_WIDTH),
+            (int)(AnimDirection is SpriteDirection.Left or SpriteDirection.Right
+                ? LEFTRIGHT_ATTACK_BOX_HEIGHT
+                : UPDOWN_ATTACK_BOX_HEIGHT * Math.Max(Velocity * UPDOWN_ATTACK_BOX_VELOCITY_MULT, 1))
         );
 
         return attackBox;
+    }
+
+    protected override void TryDealDamage(GameTime gameTime)
+    {
+        //apply damage as soon as it's set to true, and then set it to false
+        if (AnimationCollection.GetAnimation(State, AnimDirection).CurrentFrame == DAMAGE_DEALING_FRAME)
+        {
+            DealDamage(gameTime, DAMAGE_VALUE);
+            ShouldDealDamage = false;
+        }
     }
 
     public override void Update(GameTime gameTime)
@@ -305,7 +334,7 @@ public class Player : Creature
         {
             Move(Direction, Velocity / 4f, gameTime);
             Velocity = Math.Max(InitialVelocity,
-                Velocity - IdleVelocityPenalty * 1/2f * (float)gameTime.ElapsedGameTime.TotalSeconds);
+                Velocity - IDLE_VELOCITY_PENALTY * 1 / 2f * (float)gameTime.ElapsedGameTime.TotalSeconds);
         }
     }
 
@@ -315,7 +344,7 @@ public class Player : Creature
         return false;
     }
 
-    public override void DrawAttackBox(SpriteBatch spriteBatch)
+    protected override void DrawAttackBox(SpriteBatch spriteBatch)
     {
         var attackBox = GetAttackBox();
         spriteBatch.Draw(Direction.X != 0 ? HorizontalBoxTexture : VerticalBoxTexture,
