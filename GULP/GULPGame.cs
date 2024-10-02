@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using GULP.Entities;
+using GULP.Graphics.Interface;
 using GULP.Graphics.Tiled;
 using GULP.Systems;
 using Microsoft.Xna.Framework;
@@ -25,6 +26,7 @@ public class GULPGame : Game
 
     private const string PLAYER_TEXTURE_ASSET_NAME = "Sprites/player";
     private const string SLIME_TEXTURE_ASSET_NAME = "Sprites/slime";
+    private const string UI_TEXTURE_ASSET_NAME = "Interface/ui";
     private const string TILED_PREFIX_ASSET_NAME = "Tiled";
     private const string MAP_FILE_ASSET_NAME = "map_01.tmx";
 
@@ -33,8 +35,7 @@ public class GULPGame : Game
 
     //Textures
     private Texture2D _playerTexture;
-
-
+    
     //Entities
     private EntityManager _entityManager;
     private Player _player;
@@ -42,6 +43,7 @@ public class GULPGame : Game
     private Camera _camera;
     private Map _map;
     private InputController _inputController;
+    private StartScreen _startScreen;
 
     public GULPGame()
     {
@@ -93,6 +95,9 @@ public class GULPGame : Game
         
         _entityManager.AddEntity(_player);
         _entityManager.AddEntity(enemyManager);
+        
+        var startScreenTexture = Content.Load<Texture2D>(UI_TEXTURE_ASSET_NAME);
+        _startScreen = new StartScreen(startScreenTexture, _camera);
 
         _inputController = new InputController(_player, _camera);
     }
@@ -102,7 +107,8 @@ public class GULPGame : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
             Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
-
+        
+        _startScreen.Update(gameTime);
         _inputController.ProcessInputs(gameTime);
         _camera.Update(gameTime);
         _entityManager.Update(gameTime);
@@ -111,7 +117,7 @@ public class GULPGame : Game
         //probably should be in a separate DebugHelper class like the entity collisionbox logic
         var frameRate = (int)Math.Ceiling(1 / (float)gameTime.ElapsedGameTime.TotalSeconds);
         //Debug.WriteLine("FPS = " + frameRate);
-
+        
         base.Update(gameTime);
     }
 
@@ -122,6 +128,7 @@ public class GULPGame : Game
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: _camera.GetTransformationMatrix(),
             sortMode: SpriteSortMode.FrontToBack);
 
+        _startScreen.Draw(_spriteBatch);
         _map.Draw(_spriteBatch);
         _entityManager.Draw(_spriteBatch, gameTime);
 

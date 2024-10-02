@@ -1,4 +1,5 @@
-﻿using GULP.Entities;
+﻿using System;
+using GULP.Entities;
 using GULP.Graphics.Tiled;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -7,12 +8,10 @@ namespace GULP.Systems;
 
 public class Camera
 {
-    private const int STARTING_ZOOM_VALUE = 3;
-    
     private readonly IEntity _entityToFollow;
     private readonly GraphicsDevice _graphicsDevice;
     private readonly Map _map;
-    private int _zoom = STARTING_ZOOM_VALUE;
+    private int _zoom = 2;
 
     public float PositionX { get; private set; }
     public float PositionY { get; private set; }
@@ -33,11 +32,14 @@ public class Camera
     public int Zoom //additional zoom factor separate from resolution
     {
         get => _zoom;
-        set => _zoom = MathHelper.Clamp(value, 1, 5);
+        set =>
+            _zoom = MathHelper.Clamp(value, (int)Math.Ceiling((float)_graphicsDevice.Viewport.Width / _map.PixelWidth),
+                5); //clamp with min as ratio between map size and viewport so we don't show whitespace beyond map
     }
 
     public Camera(IEntity entity, GraphicsDevice graphicsDevice, Map map)
     {
+        //set default zoom values based on resolution
         _entityToFollow = entity;
         _graphicsDevice = graphicsDevice;
         _map = map;
