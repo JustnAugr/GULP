@@ -59,16 +59,18 @@ public class Camera
         var zoomX = Zoom / ScaleX;
         var zoomY = Zoom / ScaleY;
 
-        var dx = MathHelper.Clamp(PositionX, //we offset the camera by the position of our player
+        //we're rounding these and converting to int to prevent any choppy draw movement or random lines when drawing tiles
+        //if the player position causes a non-integer translation
+        var dx = (int) Math.Round(MathHelper.Clamp(PositionX, //we offset the camera by the position of our player
             0 + GULPGame.SCREEN_X_RESOLUTION /
             (2f * zoomX), //clamp the leftmost position by 0 + half the size of the current worldScreen (as determined by their resolution)
             _map.PixelWidth -
             GULPGame.SCREEN_X_RESOLUTION /
-            (2f * zoomX)); //clamp rightmost position by the size of the map - size of the current worldScreen (as determined by their resolution)
+            (2f * zoomX))); //clamp rightmost position by the size of the map - size of the current worldScreen (as determined by their resolution)
 
-        var dy = MathHelper.Clamp(PositionY,
+        var dy = (int) Math.Round(MathHelper.Clamp(PositionY,
             0 + GULPGame.SCREEN_Y_RESOLUTION / (2f * zoomY),
-            _map.PixelHeight - GULPGame.SCREEN_Y_RESOLUTION / (2f * zoomY));
+            _map.PixelHeight - GULPGame.SCREEN_Y_RESOLUTION / (2f * zoomY)));
 
         //why are dx and dy negative? the camera controls the draw of everything on the screen, relative to the player being the center
         //consider the camera as a non-moving hole and everything else can be moved under it

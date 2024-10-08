@@ -17,12 +17,12 @@ public class GULPGame : Game
     //TODO both of these should be changeable in the settings
     //this is the actual resolution that should be set via a picker in the settings
     //allowing the player to choose between 720p, 1080p, 1440p, etc
-    public const int SCREEN_X_RESOLUTION = 2560;
-    public const int SCREEN_Y_RESOLUTION = 1440;
+    public const int SCREEN_X_RESOLUTION = 1920;
+    public const int SCREEN_Y_RESOLUTION = 1080;
 
     //this is the actual window size, regardless of the resolution chosen
-    public const int SCREEN_WIDTH = 1920;
-    public const int SCREEN_HEIGHT = 1080;
+    public const int SCREEN_WIDTH = 1280;
+    public const int SCREEN_HEIGHT = 720;
 
     private const string PLAYER_TEXTURE_ASSET_NAME = "Sprites/player";
     private const string SLIME_TEXTURE_ASSET_NAME = "Sprites/slime";
@@ -108,9 +108,9 @@ public class GULPGame : Game
             Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
         
-        _startScreen.Update(gameTime);
         _inputController.ProcessInputs(gameTime);
         _camera.Update(gameTime);
+        _startScreen.Update(gameTime); //TODO better to render into the entityManager?
         _entityManager.Update(gameTime);
         _map.Update(gameTime);
 

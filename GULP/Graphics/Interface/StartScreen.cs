@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using GULP.Entities;
 using GULP.Graphics.Sprites;
 using GULP.Systems;
@@ -11,15 +12,17 @@ public class StartScreen : IEntity
 {
     private const int SLICE_WIDTH = 16;
     private const int SLICE_HEIGHT = 16;
-    private const int PAPER_NINEPATCH_WIDTH = 160;
-    private const int PAPER_NINEPATCH_HEIGHT = 192;
-    private const int BORDER_NINEPATCH_WIDTH = 192;
-    private const int BORDER_NINEPATCH_HEIGHT = 224;
+
+    //todo dynamic based on viewport size and maybe resolution?
+    private const int PAPER_NINEPATCH_WIDTH = 16 * 14;
+    private const int PAPER_NINEPATCH_HEIGHT = 16 * 16;
+    private const int BORDER_NINEPATCH_WIDTH = 16 * 16;
+    private const int BORDER_NINEPATCH_HEIGHT = 16 * 18;
 
     private readonly Camera _camera;
-    private readonly NinePatch _paper;
-    private readonly NinePatch _border;
-    private readonly NinePatch _button;
+    private readonly NPatch _paper;
+    private readonly NPatch _border;
+    private readonly NPatch _button;
 
     public Vector2 Position { get; set; }
 
@@ -27,11 +30,10 @@ public class StartScreen : IEntity
     {
         _camera = camera;
 
-        _paper = new NinePatch(texture, 216, 2, 2, SLICE_WIDTH, SLICE_HEIGHT, PAPER_NINEPATCH_WIDTH,
+        _paper = new NPatch(texture, 216, 2, 2, 3, 3, SLICE_WIDTH, SLICE_HEIGHT, PAPER_NINEPATCH_WIDTH,
             PAPER_NINEPATCH_HEIGHT);
-        _border = new NinePatch(texture, 0, 80, 2, SLICE_WIDTH, SLICE_HEIGHT, BORDER_NINEPATCH_WIDTH,
+        _border = new NPatch(texture, 2, 134, 2, 4, 4, SLICE_WIDTH, SLICE_HEIGHT, BORDER_NINEPATCH_WIDTH,
             BORDER_NINEPATCH_HEIGHT);
-        _button = new NinePatch(texture, 64, 0, 2, SLICE_WIDTH, SLICE_HEIGHT, 16 * 4, 16 * 2);
     }
 
     public void Update(GameTime gameTime)
