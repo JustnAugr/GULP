@@ -23,7 +23,6 @@ public class Map
     public int Height { get; private set; } //in tiles
     public int TileWidth { get; private set; }
     public int TileHeight { get; private set; }
-    public Camera Camera { get; set; }
 
     public int PixelWidth => Width * TileWidth;
     public int PixelHeight => Height * TileHeight;
@@ -153,13 +152,14 @@ public class Map
 
         //alter our start and end loop values if the camera is available, because we can easily cull a lot of the tiles
         //if our camera is showing a smaller area than the ENTIRE map
-        if (Camera != null)
+        GameContext.GetComponent(out Camera camera);
+        if (camera != null)
         {
-            iStart = Math.Max((int)Math.Floor(Camera.Top) / TileHeight * TileHeight - TileHeight, iStart);
-            jStart = Math.Max((int)Math.Floor(Camera.Left) / TileWidth * TileWidth - TileWidth, jStart);
+            iStart = Math.Max((int)Math.Floor(camera.Top) / TileHeight * TileHeight - TileHeight, iStart);
+            jStart = Math.Max((int)Math.Floor(camera.Left) / TileWidth * TileWidth - TileWidth, jStart);
 
-            height = Math.Min((int)Math.Floor(Camera.Bottom) / TileHeight * TileHeight + TileHeight, height);
-            width = Math.Min((int)Math.Floor(Camera.Right) / TileWidth * TileWidth + TileWidth, width);
+            height = Math.Min((int)Math.Floor(camera.Bottom) / TileHeight * TileHeight + TileHeight, height);
+            width = Math.Min((int)Math.Floor(camera.Right) / TileWidth * TileWidth + TileWidth, width);
         }
 
         //draw our map one tile at a time, layer by layer, then row by row

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
+using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
@@ -21,9 +22,6 @@ public abstract class Creature : IEntity
     protected virtual float Friction => 0f;
 
     protected float Velocity;
-
-    protected readonly Map Map;
-    protected readonly EntityManager EntityManager;
 
     protected readonly Texture2D SpriteSheet;
     protected Texture2D CollisionBoxTexture;
@@ -48,12 +46,10 @@ public abstract class Creature : IEntity
     public int Width => AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite.Width;
     public int Height => AnimationCollection.GetAnimation(State, AnimDirection).CurrentSprite.Height;
 
-    protected Creature(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager)
+    protected Creature(Texture2D spriteSheet, Vector2 position)
     {
         SpriteSheet = spriteSheet;
         Position = position;
-        Map = map;
-        EntityManager = entityManager;
 
         //init values
         State = CreatureState.Idling;
@@ -75,14 +71,17 @@ public abstract class Creature : IEntity
 
     private HashSet<Rectangle> GetCollisions(Vector2 position, Vector2 direction)
     {
+        GameContext.GetComponent(out Map map);
+        GameContext.GetComponent(out EntityManager entityManager);
+
         var collisionBox = GetCollisionBox(position);
-        var tiles = Map.GetTiles(collisionBox);
+        var tiles = map.GetTiles(collisionBox);
         //these are the collisions we'd meet at those tiles
-        var collisions = Map.GetTileCollisions(tiles);
+        var collisions = map.GetTileCollisions(tiles);
 
         foreach (var tile in tiles)
         {
-            var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            var creatureListExists = entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
             if (creatureListExists && creatureList is { Count: > 0 })
             {
                 foreach (var creature in creatureList)
@@ -135,8 +134,9 @@ public abstract class Creature : IEntity
 
         if (oldPosition != Position)
         {
-            EntityManager.RemoveTileCreaturePosition(this, oldPosition);
-            EntityManager.AddTileCreaturePosition(this, Position);
+            GameContext.GetComponent(out EntityManager entityManager);
+            entityManager.RemoveTileCreaturePosition(this, oldPosition);
+            entityManager.AddTileCreaturePosition(this, Position);
         }
     }
 
@@ -196,16 +196,17 @@ public abstract class Creature : IEntity
         //before we do any bounds or collisions checking, are we even on screen?
         //this is so if we're spawning creatures off screen, they can wander ON screen
         //TBD on if we'll need this when we move to DFS based pathing (which would presumably spawn them on a tile on screen
-        var inBoundsX = (Position.X >= 0 && Position.X <= Map.PixelWidth);
-        var inBoundsY = (Position.Y >= 0 && Position.Y <= Map.PixelHeight);
+        GameContext.GetComponent(out Map map);
+        var inBoundsX = (Position.X >= 0 && Position.X <= map.PixelWidth);
+        var inBoundsY = (Position.Y >= 0 && Position.Y <= map.PixelHeight);
 
         if (inBoundsX && inBoundsY)
         {
             //simple bounding for now to prevent us from going off screen
-            if (posX < 0 || posX > Map.PixelWidth - currentSprite.Width)
+            if (posX < 0 || posX > map.PixelWidth - currentSprite.Width)
                 posX = Position.X;
 
-            if (posY < 0 || posY > Map.PixelHeight - currentSprite.Height)
+            if (posY < 0 || posY > map.PixelHeight - currentSprite.Height)
                 posY = Position.Y;
 
             //Collision Checking v2 
@@ -305,19 +306,21 @@ public abstract class Creature : IEntity
     {
         //if we are in the process of a new attack, check if we've hit anything
         //prevents player from hitting attach 1ce but damage applying for each frame of the attack 
+        GameContext.GetComponent(out Map map);
+        GameContext.GetComponent(out EntityManager entityManager);
 
         //the play here matches what we did for collisions more or less:
         //take our rectangle (the attackbox drawn based on the first frame), get the tiles under it,
         //get all entities at those tiles, check if our attackBox intersects their collisionBox
         //if it does, we consider it a hit on that creature
         var attackBox = GetAttackBox();
-        var tiles = Map.GetTiles(attackBox);
+        var tiles = map.GetTiles(attackBox);
 
         //a set so that an entity standing on 2 tiles, both in the path of our sword doesn't take 2 hits
         var creatureSet = new HashSet<Creature>();
         foreach (var tile in tiles)
         {
-            var creatureListExists = EntityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
+            var creatureListExists = entityManager.TileCreatureMap.TryGetValue(tile, out var creatureList);
             if (!creatureListExists || creatureList is not { Count: > 0 })
                 continue;
 
@@ -356,7 +359,8 @@ public abstract class Creature : IEntity
         //did we finish dying? begone!
         if (!animation.IsPlaying && State is CreatureState.Dead)
         {
-            EntityManager.RemoveEntity(this);
+            GameContext.GetComponent(out EntityManager entityManager);
+            entityManager.RemoveEntity(this);
             return;
         }
 

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
+using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -38,8 +39,8 @@ public class Player : Creature
     private const int DAMAGE_DEALING_FRAME = 1;
     private const float DAMAGE_VALUE = 25f;
 
-    public Player(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager) : base(spriteSheet,
-        position, map, entityManager)
+    public Player(Texture2D spriteSheet, Vector2 position) : base(spriteSheet,
+        position)
     {
         //values on initialization
         Health = BASE_HEALTH;

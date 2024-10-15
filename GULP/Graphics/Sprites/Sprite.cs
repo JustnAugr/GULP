@@ -1,4 +1,5 @@
 ﻿using System;
+using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -44,9 +45,10 @@ public class Sprite
         //we assume the sprite is always drawn on tile layer 1
 
         //TODO do I need to apply the tint on top? and how do I not apply it to the sword?
+        GameContext.GetComponent(out GameSettings settings);
         spriteBatch.Draw(Texture, position, Rect, tint, 0, new Vector2(0, 0), 1,
             _spriteEffects,
-            MathHelper.Clamp((position.Y + Height) / (GULPGame.SCREEN_Y_RESOLUTION * 16) * LAYER_DEPTH, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
+            MathHelper.Clamp((position.Y + Height) / (settings.ResolutionHeight * 16) * LAYER_DEPTH, 0f, 1f)); //TODO put this 16 into a constant,it's the tileHeight
         //we have to clamp this as when an entity gets down towards the bottom it can become undrawn as this division gets slightly over 1
     }
 }

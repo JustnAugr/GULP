@@ -10,7 +10,6 @@ public class Camera
 {
     private readonly IEntity _entityToFollow;
     private readonly GraphicsDevice _graphicsDevice;
-    private readonly Map _map;
     private int _zoom = 2;
 
     public float PositionX { get; private set; }
@@ -19,8 +18,23 @@ public class Camera
     //we scale our viewport (the actual monitor size of the person playing) by the resolution they've chosen so that it fills their window
     //this can be taken to be a "scaling" viewport adaptor, rather than say a pillarbox adaptor that would just create a box around the game
     //if the player chose 720p when using a 2k monitor
-    public float ScaleX => (float)_graphicsDevice.Viewport.Width / GULPGame.SCREEN_X_RESOLUTION;
-    public float ScaleY => (float)_graphicsDevice.Viewport.Height / GULPGame.SCREEN_Y_RESOLUTION;
+    public float ScaleX
+    {
+        get
+        {
+            GameContext.GetComponent(out GameSettings settings);
+            return (float)_graphicsDevice.Viewport.Width / settings.ResolutionWidth;
+        }
+    }
+
+    public float ScaleY
+    {
+        get
+        {
+            GameContext.GetComponent(out GameSettings settings);
+            return (float)_graphicsDevice.Viewport.Height / settings.ResolutionHeight;
+        }
+    }
 
     //provide the bounds of the actual drawable screen, so that we can easily cull drawing anything outside of this
     public float Left => -(GetTransformationMatrix().Translation.X / GetTransformationMatrix().Right.X);
@@ -32,17 +46,19 @@ public class Camera
     public int Zoom //additional zoom factor separate from resolution
     {
         get => _zoom;
-        set =>
-            _zoom = MathHelper.Clamp(value, (int)Math.Ceiling((float)_graphicsDevice.Viewport.Width / _map.PixelWidth),
+        set
+        {
+            GameContext.GetComponent(out Map map);
+            _zoom = MathHelper.Clamp(value, (int)Math.Ceiling((float)_graphicsDevice.Viewport.Width / map.PixelWidth),
                 5); //clamp with min as ratio between map size and viewport so we don't show whitespace beyond map
+        }
     }
 
-    public Camera(IEntity entity, GraphicsDevice graphicsDevice, Map map)
+    public Camera(IEntity entity, GraphicsDevice graphicsDevice)
     {
         //set default zoom values based on resolution
         _entityToFollow = entity;
         _graphicsDevice = graphicsDevice;
-        _map = map;
     }
 
     public void Update(GameTime gameTime)
@@ -59,18 +75,23 @@ public class Camera
         var zoomX = Zoom / ScaleX;
         var zoomY = Zoom / ScaleY;
 
+        GameContext.GetComponent(out GameSettings settings);
+        var xRes = settings.ResolutionWidth;
+        var yRes = settings.ResolutionHeight;
+
+        GameContext.GetComponent(out Map map);
         //we're rounding these and converting to int to prevent any choppy draw movement or random lines when drawing tiles
         //if the player position causes a non-integer translation
-        var dx = (int) Math.Round(MathHelper.Clamp(PositionX, //we offset the camera by the position of our player
-            0 + GULPGame.SCREEN_X_RESOLUTION /
+        var dx = (int)Math.Round(MathHelper.Clamp(PositionX, //we offset the camera by the position of our player
+            0 + xRes /
             (2f * zoomX), //clamp the leftmost position by 0 + half the size of the current worldScreen (as determined by their resolution)
-            _map.PixelWidth -
-            GULPGame.SCREEN_X_RESOLUTION /
+            map.PixelWidth -
+            xRes /
             (2f * zoomX))); //clamp rightmost position by the size of the map - size of the current worldScreen (as determined by their resolution)
 
-        var dy = (int) Math.Round(MathHelper.Clamp(PositionY,
-            0 + GULPGame.SCREEN_Y_RESOLUTION / (2f * zoomY),
-            _map.PixelHeight - GULPGame.SCREEN_Y_RESOLUTION / (2f * zoomY)));
+        var dy = (int)Math.Round(MathHelper.Clamp(PositionY,
+            0 + yRes / (2f * zoomY),
+            map.PixelHeight - yRes / (2f * zoomY)));
 
         //why are dx and dy negative? the camera controls the draw of everything on the screen, relative to the player being the center
         //consider the camera as a non-moving hole and everything else can be moved under it

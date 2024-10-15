@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using GULP.Graphics.Tiled;
+using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -9,7 +10,6 @@ namespace GULP.Entities;
 
 public class EntityManager
 {
-    private readonly Map _map;
     private readonly List<IEntity> _entities = new();
     private readonly List<IEntity> _entitiesToAdd = new();
     private readonly List<IEntity> _entitiesToRemove = new();
@@ -19,11 +19,6 @@ public class EntityManager
     public readonly Dictionary<Vector2, List<Creature>> TileCreatureMap = new();
 
     public IEnumerable<IEntity> Entities => new ReadOnlyCollection<IEntity>(_entities);
-
-    public EntityManager(Map map)
-    {
-        _map = map;
-    }
 
     public void Update(GameTime gameTime)
     {
@@ -77,7 +72,8 @@ public class EntityManager
     public void RemoveTileCreaturePosition(Creature creature, Vector2 position)
     {
         //get the tiles this entity was previously on, remove it from the tileEntityMap for that tile
-        var oldTiles = _map.GetTiles(creature.GetCollisionBox(position));
+        GameContext.GetComponent(out Map map);
+        var oldTiles = map.GetTiles(creature.GetCollisionBox(position));
         foreach (var oldTile in oldTiles)
         {
             TileCreatureMap.TryGetValue(oldTile, out var oldTileEntityList);
@@ -89,7 +85,8 @@ public class EntityManager
 
     public void AddTileCreaturePosition(Creature creature, Vector2 position)
     {
-        var newTiles = _map.GetTiles(creature.GetCollisionBox(position));
+        GameContext.GetComponent(out Map map);
+        var newTiles = map.GetTiles(creature.GetCollisionBox(position));
         foreach (var tile in newTiles)
         {
             List<Creature> newTileCreatureList = TileCreatureMap.GetValueOrDefault(tile, new List<Creature>());

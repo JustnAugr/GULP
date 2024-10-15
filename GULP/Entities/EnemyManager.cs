@@ -14,26 +14,18 @@ public class EnemyManager : IEntity
     private const float TIME_PER_SPAWN = 20f; //every 20 seconds?
 
     private float _timeSinceLastSpawn = float.MaxValue;
-    private readonly List<Object> _slimeSpawnObjects;
     private readonly Random _random;
 
     private readonly Texture2D _slimeSpriteSheet;
-    private readonly EntityManager _entityManager;
-    private readonly Map _map;
-    private readonly Camera _camera;
     private readonly Player _player;
     public Vector2 Position { get; set; }
 
-    public EnemyManager(Texture2D slimeSpriteSheet, EntityManager entityManager, Map map, Camera camera, Player player)
+    public EnemyManager(Texture2D slimeSpriteSheet, Player player)
     {
         _slimeSpriteSheet = slimeSpriteSheet;
-        _entityManager = entityManager;
-        _map = map;
-        _camera = camera;
         _player = player;
 
         _random = new Random();
-        _slimeSpawnObjects = _map.Objects.Where(obj => obj.Type == ObjectType.SlimeSpawn).ToList();
     }
 
     public void Update(GameTime gameTime)
@@ -43,7 +35,10 @@ public class EnemyManager : IEntity
 
         if (_timeSinceLastSpawn >= TIME_PER_SPAWN)
         {
-            var spawnObject = _slimeSpawnObjects[_random.Next(0, _slimeSpawnObjects.Count)];
+            GameContext.GetComponent(out EntityManager entityManager);
+            GameContext.GetComponent(out Map map);
+            var slimeSpawnObjects = map.Objects.Where(obj => obj.Type == ObjectType.SlimeSpawn).ToList();
+            var spawnObject = slimeSpawnObjects[_random.Next(0, slimeSpawnObjects.Count)];
             var x = spawnObject.Width > 0
                 ? _random.Next(spawnObject.X, spawnObject.X + spawnObject.Width)
                 : spawnObject.X;
@@ -51,8 +46,8 @@ public class EnemyManager : IEntity
                 ? _random.Next(spawnObject.Y, spawnObject.Y + spawnObject.Height)
                 : spawnObject.Y;
 
-            var slime = new Slime(_slimeSpriteSheet, new Vector2(x, y), _map, _entityManager, _player);
-            _entityManager.AddEntity(slime);
+            var slime = new Slime(_slimeSpriteSheet, new Vector2(x, y), _player);
+            entityManager.AddEntity(slime);
 
             _timeSinceLastSpawn = 0;
         }

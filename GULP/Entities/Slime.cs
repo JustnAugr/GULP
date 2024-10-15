@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using GULP.Graphics.Sprites;
 using GULP.Graphics.Tiled;
+using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -34,7 +35,7 @@ public class Slime : Creature
     private const int ATTACK_MVMT_FRAME_END = 3;
     private const float ATTACK_MVMT_VELOCITY_MULT = 1.25f;
 
-    private const int DAMAGE_DEALING_FRAME = 5;
+    private const int DAMAGE_DEALING_FRAME = 6;
     private const float BASE_HEALTH = 100;
     private const float DAMAGE_VALUE = 25f;
 
@@ -45,14 +46,21 @@ public class Slime : Creature
 
     private readonly Player _player;
 
-    private int AttackDistanceThreshold => Map.TileWidth * 4;
     private float _timeSinceLastDecision = float.MaxValue; //when did we last make a decision?
     private CreatureState _lastDecision; //what was our last decision?
     private Vector2 _lastDecidedPosition;
 
-    public Slime(Texture2D spriteSheet, Vector2 position, Map map, EntityManager entityManager, Player player) : base(
-        spriteSheet,
-        position, map, entityManager)
+    private int AttackDistanceThreshold
+    {
+        get
+        {
+            GameContext.GetComponent(out Map map);
+            return map.TileWidth * 4;
+        }
+    }
+
+    public Slime(Texture2D spriteSheet, Vector2 position, Player player) : base(
+        spriteSheet, position)
     {
         Health = BASE_HEALTH;
 
@@ -349,10 +357,11 @@ public class Slime : Creature
             //calculate an approximated direction to the tile, to make our walking less choppy and prevent things like
             //rapid 1,1 -> -1,1 back and forth switches
             //we'll use this for walking to prevent pixel specific changes from making us look left/right randomly
-            var playerTile = new Vector2((int)Math.Floor(_player.Position.X) / Map.TileWidth * Map.TileWidth,
-                (int)Math.Floor(_player.Position.Y + _player.Height) / Map.TileHeight * Map.TileHeight);
-            var slimeTile = new Vector2((int)Math.Floor(Position.X) / Map.TileWidth * Map.TileWidth,
-                (int)Math.Floor(Position.Y + Height) / Map.TileHeight * Map.TileHeight);
+            GameContext.GetComponent(out Map map);
+            var playerTile = new Vector2((int)Math.Floor(_player.Position.X) / map.TileWidth * map.TileWidth,
+                (int)Math.Floor(_player.Position.Y + _player.Height) / map.TileHeight * map.TileHeight);
+            var slimeTile = new Vector2((int)Math.Floor(Position.X) / map.TileWidth * map.TileWidth,
+                (int)Math.Floor(Position.Y + Height) / map.TileHeight * map.TileHeight);
             var tileDirection = playerTile - slimeTile;
             tileDirection.Normalize();
             tileDirection.Round();

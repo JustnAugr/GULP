@@ -10,13 +10,11 @@ public class InputController
     private const int CAMERA_ZOOM_STEP = 1;
 
     private readonly Player _player;
-    private readonly Camera _camera;
     private KeyboardState _previousKeyboardState;
 
-    public InputController(Player player, Camera camera)
+    public InputController(Player player)
     {
         _player = player;
-        _camera = camera;
     }
 
     public void ProcessInputs(GameTime gameTime)
@@ -24,20 +22,30 @@ public class InputController
         var keyboardState = Keyboard.GetState();
 
         ProcessCameraInputs(keyboardState);
-        ProcessPlayerInputs(keyboardState, gameTime);
+
+        //TODO maybe better to do a "is game paused" type flag but for now...
+        if (GameContext.IsMenuOpen)
+        {
+            ProcessMenuInputs(keyboardState, gameTime);
+        }
+        else
+        {
+            ProcessPlayerInputs(keyboardState, gameTime);
+        }
 
         _previousKeyboardState = keyboardState;
     }
 
     private void ProcessCameraInputs(KeyboardState keyboardState)
     {
+        GameContext.GetComponent(out Camera camera);
         if (keyboardState.IsKeyDown(Keys.OemPlus) && !_previousKeyboardState.IsKeyDown(Keys.OemPlus))
         {
-            _camera.Zoom += CAMERA_ZOOM_STEP;
+            camera.Zoom += CAMERA_ZOOM_STEP;
         }
         else if (keyboardState.IsKeyDown(Keys.OemMinus) && !_previousKeyboardState.IsKeyDown(Keys.OemMinus))
         {
-            _camera.Zoom -= CAMERA_ZOOM_STEP;
+            camera.Zoom -= CAMERA_ZOOM_STEP;
         }
     }
 
@@ -68,6 +76,14 @@ public class InputController
         else
         {
             _player.Idle(gameTime);
+        }
+    }
+
+    private void ProcessMenuInputs(KeyboardState keyboardState, GameTime gameTime)
+    {
+        if (keyboardState.IsKeyDown(Keys.C) && GameContext.OpenMenu != null && GameContext.OpenMenu.IsOpen)
+        {
+            GameContext.OpenMenu.Close();
         }
     }
 }
