@@ -85,5 +85,20 @@ public class InputController
         {
             GameContext.OpenMenu.Close();
         }
+
+        //this will be moved into button presses in the menu eventually...
+        if (keyboardState.IsKeyDown(Keys.F12) && !_previousKeyboardState.IsKeyDown(Keys.F12))
+        {
+            GameContext.GetComponent(out GameSettings settings);
+            settings.ToggleFullScreen(true, !settings.IsBorderless);
+            Debug.WriteLine("Borderless toggled to: " + settings.IsBorderless);
+        }
+
+        if (keyboardState.IsKeyDown(Keys.F11) && !_previousKeyboardState.IsKeyDown(Keys.F11))
+        {
+            GameContext.GetComponent(out GameSettings settings);
+            settings.ToggleFullScreen(!settings.IsFullscreen);
+            Debug.WriteLine("FullScreen toggled to: " + settings.IsFullscreen);
+        }
     }
 }

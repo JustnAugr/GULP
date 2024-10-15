@@ -8,9 +8,10 @@ namespace GULP.Systems;
 
 public class Camera
 {
+    private const int DEFAULT_ZOOM_FACTOR = 3;
     private readonly IEntity _entityToFollow;
     private readonly GraphicsDevice _graphicsDevice;
-    private int _zoom = 2;
+    private int _zoom;
 
     public float PositionX { get; private set; }
     public float PositionY { get; private set; }
@@ -59,6 +60,9 @@ public class Camera
         //set default zoom values based on resolution
         _entityToFollow = entity;
         _graphicsDevice = graphicsDevice;
+
+        //set the default zoom as either the largest window scale, or a minimum of 3
+        _zoom = Math.Max((int)Math.Ceiling(Math.Max(ScaleX, ScaleY)), DEFAULT_ZOOM_FACTOR);
     }
 
     public void Update(GameTime gameTime)
