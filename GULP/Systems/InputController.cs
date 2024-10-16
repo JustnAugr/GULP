@@ -9,13 +9,7 @@ public class InputController
 {
     private const int CAMERA_ZOOM_STEP = 1;
 
-    private readonly Player _player;
     private KeyboardState _previousKeyboardState;
-
-    public InputController(Player player)
-    {
-        _player = player;
-    }
 
     public void ProcessInputs(GameTime gameTime)
     {
@@ -62,20 +56,20 @@ public class InputController
 
         Vector2 direction = new(x, y);
 
-        if (keyboardState.IsKeyDown(Keys.Space) && !_player.IsAttacking)
+        if (keyboardState.IsKeyDown(Keys.Space) && !GameContext.Player.IsAttacking)
         {
             if (!(downPressed || upPressed || leftPressed || rightPressed))
-                _player.Attack(gameTime);
+                GameContext.Player.Attack(gameTime);
             else
-                _player.Attack(direction, gameTime);
+                GameContext.Player.Attack(direction, gameTime);
         }
         else if (downPressed || upPressed || leftPressed || rightPressed)
         {
-            _player.Walk(direction, gameTime);
+            GameContext.Player.Walk(direction, gameTime);
         }
         else
         {
-            _player.Idle(gameTime);
+            GameContext.Player.Idle(gameTime);
         }
     }
 

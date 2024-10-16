@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GULP.Entities;
 using GULP.Graphics.Interface;
 
 namespace GULP.Systems;
@@ -11,6 +12,20 @@ public static class GameContext
     public static IInterface OpenMenu { get; set; }
 
     private static readonly Dictionary<string, object> Components = new();
+
+    private static Player _player;
+
+    public static Player Player
+    {
+        get => _player;
+        set
+        {
+            if (_player != null)
+                throw new ArgumentException("Player already set!");
+            else
+                _player = value;
+        }
+    }
 
     public static void AddComponent<T>(T component)
     {

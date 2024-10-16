@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using GULP.Entities;
-using GULP.Graphics.Sprites;
 using GULP.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -13,26 +10,42 @@ public class StartScreen : IInterface
     private const int SLICE_WIDTH = 16;
     private const int SLICE_HEIGHT = 16;
 
-    //todo dynamic based on viewport size and maybe resolution?
-    private const int PAPER_NINEPATCH_WIDTH = 16 * 14;
-    private const int PAPER_NINEPATCH_HEIGHT = 16 * 16;
-    private const int BORDER_NINEPATCH_WIDTH = 16 * 16;
-    private const int BORDER_NINEPATCH_HEIGHT = 16 * 18;
+    private readonly Texture2D _texture;
 
-    private readonly NPatch _paper;
-    private readonly NPatch _border;
-    private readonly NPatch _button;
+    private int _borderNinepatchWidth;
+    private int _borderNinepatchHeight;
+
+    private NPatch _paper;
+    private NPatch _border;
 
     public Vector2 Position { get; set; }
-
     public bool IsOpen { get; private set; }
 
     public StartScreen(Texture2D texture)
     {
-        _paper = new NPatch(texture, 216, 2, 2, 3, 3, SLICE_WIDTH, SLICE_HEIGHT, PAPER_NINEPATCH_WIDTH,
-            PAPER_NINEPATCH_HEIGHT);
-        _border = new NPatch(texture, 2, 134, 2, 4, 4, SLICE_WIDTH, SLICE_HEIGHT, BORDER_NINEPATCH_WIDTH,
-            BORDER_NINEPATCH_HEIGHT);
+        _texture = texture;
+        CreateNPatches();
+    }
+
+    private void CreateNPatches()
+    {
+        //get camera, get the Height and Width of the current view in slices
+        GameContext.GetComponent(out Camera camera);
+        var screenWidthSlices = camera.Width / SLICE_WIDTH;
+        var screenHeightSlices = camera.Height / SLICE_HEIGHT;
+
+        //create the border as 1/3 the screen width, 2/3 the screen height in slices, then convert to pixels
+        _borderNinepatchWidth = (int)Math.Floor(screenWidthSlices * 1 / 3f) * SLICE_WIDTH;
+        _borderNinepatchHeight = (int)Math.Floor(screenHeightSlices * 2 / 3f) * SLICE_HEIGHT;
+
+        //needs to be "inside" the border, so adjusting for that
+        var paperWidth = _borderNinepatchWidth - SLICE_WIDTH * 2;
+        var paperHeight = _borderNinepatchHeight - SLICE_HEIGHT * 2;
+
+        _paper = new NPatch(_texture, 216, 2, 2, 3, 3, SLICE_WIDTH, SLICE_HEIGHT, paperWidth,
+            paperHeight);
+        _border = new NPatch(_texture, 2, 134, 2, 4, 4, SLICE_WIDTH, SLICE_HEIGHT, _borderNinepatchWidth,
+            _borderNinepatchHeight);
     }
 
     public bool Open()
@@ -40,6 +53,9 @@ public class StartScreen : IInterface
         IsOpen = true;
         GameContext.IsMenuOpen = true;
         GameContext.OpenMenu = this;
+
+        //create new NPatches in case our screen resolution changed and the menu should now be a new size
+        CreateNPatches();
         return true;
     }
 
@@ -58,8 +74,8 @@ public class StartScreen : IInterface
 
         //draw it in the center of our screen/camera
         GameContext.GetComponent(out Camera camera);
-        var posX = camera.Left + (camera.Right - camera.Left) / 2f - BORDER_NINEPATCH_WIDTH / 2f;
-        var posY = camera.Top + (camera.Bottom - camera.Top) / 2f - BORDER_NINEPATCH_HEIGHT / 2f;
+        var posX = camera.Left + camera.Width / 2f - _borderNinepatchWidth / 2f;
+        var posY = camera.Top + camera.Height / 2f - _borderNinepatchHeight / 2f;
 
         Position = new Vector2(posX, posY);
     }

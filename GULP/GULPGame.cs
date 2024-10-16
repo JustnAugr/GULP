@@ -45,6 +45,19 @@ public class GULPGame : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+        #region Core
+
+        var gameSettings = new GameSettings(_graphics);
+        GameContext.AddComponent(gameSettings);
+
+        _inputController = new InputController();
+        GameContext.AddComponent(_inputController);
+
+        _camera = new Camera(GraphicsDevice);
+        GameContext.AddComponent(_camera);
+
+        #endregion
+
         #region Map
 
         _map = Map.Load(Path.Combine(Content.RootDirectory, TILED_PREFIX_ASSET_NAME, MAP_FILE_ASSET_NAME), Content);
@@ -65,9 +78,11 @@ public class GULPGame : Game
 
         var playerTexture = Content.Load<Texture2D>(PLAYER_TEXTURE_ASSET_NAME);
         var player = new Player(playerTexture, new Vector2(playerSpawnLocation.X, playerSpawnLocation.Y));
+        GameContext.Player = player; //set it on the context for global use
+        _camera.Follow(player); //camera should follow the player
 
         var slimeTexture = Content.Load<Texture2D>(SLIME_TEXTURE_ASSET_NAME);
-        var enemyManager = new EnemyManager(slimeTexture, player);
+        var enemyManager = new EnemyManager(slimeTexture);
 
         _entityManager.AddEntity(player);
         _entityManager.AddEntity(enemyManager);
@@ -82,19 +97,6 @@ public class GULPGame : Game
         _startScreen.Open();
 
         #endregion
-
-        #region Core
-
-        var gameSettings = new GameSettings(_graphics);
-        GameContext.AddComponent(gameSettings);
-
-        _inputController = new InputController(player);
-        GameContext.AddComponent(_inputController);
-
-        _camera = new Camera(player, GraphicsDevice);
-        GameContext.AddComponent(_camera);
-
-        #endregion
     }
 
     protected override void Update(GameTime gameTime)
@@ -106,7 +108,7 @@ public class GULPGame : Game
         _inputController.ProcessInputs(gameTime);
         _camera.Update(gameTime);
         _startScreen.Update(gameTime);
-        
+
         //todo this should be "IsGamePaused" and the menu func needs to move an interface manager later
         if (!GameContext.IsMenuOpen)
         {

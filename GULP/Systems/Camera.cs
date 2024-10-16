@@ -9,17 +9,18 @@ namespace GULP.Systems;
 public class Camera
 {
     private const int DEFAULT_ZOOM_FACTOR = 3;
-    private readonly IEntity _entityToFollow;
+
     private readonly GraphicsDevice _graphicsDevice;
     private int _zoom;
+    private IEntity _entityToFollow;
 
-    public float PositionX { get; private set; }
-    public float PositionY { get; private set; }
+    private float PositionX { get; set; }
+    private float PositionY { get; set; }
 
     //we scale our viewport (the actual monitor size of the person playing) by the resolution they've chosen so that it fills their window
     //this can be taken to be a "scaling" viewport adaptor, rather than say a pillarbox adaptor that would just create a box around the game
     //if the player chose 720p when using a 2k monitor
-    public float ScaleX
+    private float ScaleX
     {
         get
         {
@@ -28,7 +29,7 @@ public class Camera
         }
     }
 
-    public float ScaleY
+    private float ScaleY
     {
         get
         {
@@ -44,6 +45,9 @@ public class Camera
     public float Top => -(GetTransformationMatrix().Translation.Y / GetTransformationMatrix().Up.Y);
     public float Bottom => Top + _graphicsDevice.Viewport.Height / GetTransformationMatrix().Up.Y;
 
+    public float Width => Right - Left;
+    public float Height => Bottom - Top;
+
     public int Zoom //additional zoom factor separate from resolution
     {
         get => _zoom;
@@ -55,10 +59,8 @@ public class Camera
         }
     }
 
-    public Camera(IEntity entity, GraphicsDevice graphicsDevice)
+    public Camera(GraphicsDevice graphicsDevice)
     {
-        //set default zoom values based on resolution
-        _entityToFollow = entity;
         _graphicsDevice = graphicsDevice;
 
         //set the default zoom as either the largest window scale, or a minimum of 3
@@ -67,8 +69,16 @@ public class Camera
 
     public void Update(GameTime gameTime)
     {
-        PositionX = _entityToFollow.Position.X;
-        PositionY = _entityToFollow.Position.Y;
+        if (_entityToFollow != null)
+        {
+            PositionX = _entityToFollow.Position.X;
+            PositionY = _entityToFollow.Position.Y;
+        }
+    }
+
+    public void Follow(IEntity entity)
+    {
+        _entityToFollow = entity;
     }
 
     public Matrix GetTransformationMatrix()

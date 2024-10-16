@@ -14,8 +14,8 @@ public class GameSettings
     public int ResolutionWidth { get; private set; }
     public int ResolutionHeight { get; private set; }
 
-    public bool IsBorderless { get; private set; }
-    public bool IsFullscreen { get; private set; } = true;
+    public bool IsBorderless { get; private set; } = true;
+    public bool IsFullscreen { get; private set; } = false;
 
     #endregion
 

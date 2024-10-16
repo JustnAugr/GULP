@@ -17,14 +17,11 @@ public class EnemyManager : IEntity
     private readonly Random _random;
 
     private readonly Texture2D _slimeSpriteSheet;
-    private readonly Player _player;
     public Vector2 Position { get; set; }
 
-    public EnemyManager(Texture2D slimeSpriteSheet, Player player)
+    public EnemyManager(Texture2D slimeSpriteSheet)
     {
         _slimeSpriteSheet = slimeSpriteSheet;
-        _player = player;
-
         _random = new Random();
     }
 
@@ -46,7 +43,7 @@ public class EnemyManager : IEntity
                 ? _random.Next(spawnObject.Y, spawnObject.Y + spawnObject.Height)
                 : spawnObject.Y;
 
-            var slime = new Slime(_slimeSpriteSheet, new Vector2(x, y), _player);
+            var slime = new Slime(_slimeSpriteSheet, new Vector2(x, y));
             entityManager.AddEntity(slime);
 
             _timeSinceLastSpawn = 0;
